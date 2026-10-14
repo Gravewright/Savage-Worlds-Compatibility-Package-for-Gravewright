@@ -65,7 +65,7 @@ def assert_pause_controls(tracker, player_tracker):
     expect(player_tracker.locator('.gws-tracker-paused')).to_be_visible(timeout=15000)
     for action in ('pause', 'resume', 'stop', 'deal', 'add', 'actions', 'bennyCard'):
         assert player_tracker.locator(f'[data-gws-tracker-action="tracker.{action}"]').count() == 0, action
-    expect(player_tracker.locator('[data-gws-tracker-action="tracker.next"]')).to_be_disabled()
+    expect(player_tracker.locator('[data-gws-tracker-action="tracker.next"]')).to_have_count(0)
 
 
 def assert_compact_layout(tracker, count=2):
@@ -130,16 +130,15 @@ def smoke(seed, output):
             page.wait_for_function('!!window.gravewrightMaps?.current && !!window.gravewright')
             pages[role] = page
         gm, player = pages['gm'], pages['editor']
-        # A previous split installation keeps its immutable archive for rollback,
-        # while the active system is the only visible Savage Worlds package.
+        # The original 0.2.3 host installs one ordinary browser system. No server
+        # provider, companion module or host patch is present in this fixture.
         installed_response = gm.request.get(seed['base'] + '/api/module-packages')
         assert installed_response.ok
         installed = installed_response.json()
         system = next(row for row in installed if row['id'] == seed['package']['id'])
-        previous = next(row for row in installed if row['id'] == system['django']['replaces'][0])
-        assert system['globalEnabled'] is True and system['version'] == seed['package']['version']
-        assert previous['globalEnabled'] is False
-        assert previous['supersededBy'] == seed['package']
+        assert set(row['id'] for row in installed) == {seed['package']['id']}
+        assert system['version'] == seed['package']['version'] and 'django' not in system
+        assert system['system']['combat']['requiresProvider'] is False
         library_page = gm.context.new_page()
         library_page.goto(seed['base'] + '/inside?section=addons')
         library = library_page.locator('[data-module-catalog=installed]')
@@ -267,7 +266,8 @@ def smoke(seed, output):
         assert other['data']['statusClocks']['distracted']['awaitingStart'] is True
 
         player_tracker = show_tracker(player)
-        expect(player_tracker.locator('[data-gws-tracker-action="tracker.next"]')).to_be_enabled(timeout=15000)
+        expect(player_tracker.locator('[data-gws-tracker-action="tracker.next"]')).to_have_count(0)
+        expect(player_tracker.locator('.gws-tracker-gm-controls')).to_have_text(LABELS['tracker.gmControls'])
         expect(player_tracker.locator('.gws-tracker-card img')).to_have_count(0)
         private_urls = [card['frontUrl'] for card in native_cards['hand'] if card.get('frontUrl')]
         player_markup = player_tracker.inner_html()
@@ -293,12 +293,36 @@ def smoke(seed, output):
         expect(tracker.locator('[data-gws-tracker-action="tracker.beginRound"]')).to_be_disabled()
         assert tracker.locator('.gws-tracker-phase').count() == 0
         expect(player_tracker.locator('.gws-tracker-paused')).to_have_count(0, timeout=15000)
-        expect(player_tracker.locator('[data-gws-tracker-action="tracker.next"]')).to_be_enabled(timeout=15000)
+        expect(player_tracker.locator('[data-gws-tracker-action="tracker.next"]')).to_have_count(0)
         assert native_snapshot(gm, seed) == playing_before
 
-        # The existing owner regains its working native next-turn control.
-        player_tracker.locator('[data-gws-tracker-action="tracker.next"]').click()
-        expect(player_tracker).not_to_have_attribute('aria-busy', 'true', timeout=15000)
+        # Commit the first clock save but lose its response. The package keeps
+        # the native transition pending until Retry finishes every document;
+        # replay must neither move another turn nor decrement another duration.
+        lost_clock = {'done': False, 'requestId': None}
+        def lose_clock_save(route):
+            payload = route.request.post_data_json
+            if (payload.get('domain') == 'actors' and payload.get('method') == 'saveSheet'
+                    and payload.get('payload', {}).get('data', {}).get('status', {}).get('distracted') is False
+                    and not lost_clock['done']):
+                lost_clock['done'] = True
+                lost_clock['requestId'] = payload.get('requestId')
+                response = route.fetch()
+                assert response.ok
+                route.fulfill(status=503, json={'error': 'unavailable'})
+            else:
+                route.continue_()
+        gm.route(SCOPED_API, lose_clock_save)
+        tracker.locator('[data-gws-tracker-action="tracker.next"]').click()
+        expect(tracker.locator('.gws-tracker-error')).to_be_visible(timeout=15000)
+        assert lost_clock['done'] and lost_clock['requestId']
+        interrupted = gm.evaluate('async sceneId=>await gravewright.combat.state({sceneId})', seed['scene'])
+        assert interrupted['turn'] == 1
+        expect(tracker.locator('[data-gws-tracker-action="tracker.next"]')).to_be_disabled()
+        tracker.locator('[data-gws-tracker-action="common.retry"]').click()
+        expect(tracker).not_to_have_attribute('aria-busy', 'true', timeout=15000)
+        expect(tracker.locator('.gws-tracker-error')).to_have_count(0)
+        gm.unroute(SCOPED_API, lose_clock_save)
         current_after = gm.evaluate('async sceneId=>await gravewright.combat.state({sceneId})', seed['scene'])
         assert current_after['turn'] == 1, current_after
         first_after = gm.evaluate("async ({actor,token})=>await gravewright.actors.sheet(actor,{tokenId:token})", {'actor': seed['actor'], 'token': current['token_id']})
@@ -334,7 +358,7 @@ def smoke(seed, output):
             actions.press('Escape')
             expect(actions).to_have_count(0)
         expect(player_tracker.locator('.gws-tracker-paused')).to_have_count(0, timeout=15000)
-        expect(player_tracker.locator('[data-gws-tracker-action="tracker.next"]')).to_be_disabled()
+        expect(player_tracker.locator('[data-gws-tracker-action="tracker.next"]')).to_have_count(0)
         assert native_snapshot(gm, seed) == ready_before
         assert_front_images(gm)
         assert_compact_layout(tracker)
@@ -367,7 +391,8 @@ def smoke(seed, output):
         assert not errors, errors
         browser.close()
     return {'passed': True, 'nativeCards': True, 'lostResponseReplay': True, 'roundClockOrder': True, 'independentToken': True,
-        'playerPermissions': True, 'pausePlaying': True, 'pauseReady': True, 'pausePersistence': True,
+        'playerPermissions': True, 'gmOnlyClockAdvancement': True, 'clockSaveLostResponseReplay': True,
+        'pausePlaying': True, 'pauseReady': True, 'pausePersistence': True,
         'existingPlayerPauseSync': True, 'pausePreservesNativeState': True, 'configuredNativeDeck': True,
         'nativeFrontImages': True, 'privateFacesHidden': True, 'compactDndLayout': True, 'gmPoolModal': True,
         'mobile': width, 'output': str(output)}
@@ -383,12 +408,11 @@ def main():
     output.mkdir(parents=True)
     server = log = None
     try:
-        server, log, seed = start_fixture(root, output, args.archive.resolve(), 30019,
-                                        with_card_deck=True, legacy_companion=True)
+        server, log, seed = start_fixture(root, output, args.archive.resolve(), 30019, with_card_deck=True)
         result = smoke(seed, output)
-        result['legacyCompanionSuperseded'] = True
         result['systemOnlyInInstalledLibrary'] = True
-        result['bundledServerLoadedFromInstalledSystem'] = True
+        result['packageOwnedBrowserClocks'] = True
+        result['noServerProviderOrCorePatch'] = True
         archives = list((Path(seed['fixture']) / 'modules' / 'archives').glob('*.zip'))
         result['archiveSha256'] = fingerprint(archives[0]) if len(archives) == 1 else fingerprint(args.archive.resolve())
         (output / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')

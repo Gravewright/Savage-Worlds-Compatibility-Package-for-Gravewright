@@ -44,23 +44,34 @@ class PackageTests(unittest.TestCase):
             self.assertNotIn('private-notes.json', archive.namelist())
             self.assertNotIn('content/not-a-runtime-file.json', archive.namelist())
             self.assertNotIn('package.json', archive.namelist())
-            self.assertIn('gravewright_swade/apps.py', archive.namelist())
-            self.assertIn('gravewright_swade/combat.py', archive.namelist())
+            self.assertFalse(any(name.endswith(('.py', '.pyc', '.pyd')) for name in archive.namelist()))
             self.assertNotIn('server/manifest.json', archive.namelist())
             self.assertFalse(any(name.startswith(('scripts/', 'tests/', 'server/'))
                                  for name in archive.namelist()))
             manifest = json.loads(archive.read('manifest.json'))
-            self.assertEqual(manifest['django']['apps'], ['gravewright_swade.apps.SwadeConfig'])
+            self.assertNotIn('django', manifest)
+            self.assertFalse(manifest['system']['combat']['requiresProvider'])
             self.assertIn('entry', manifest)
             self.assertIn('system', manifest)
 
-    def test_build_rejects_missing_or_mismatched_bundled_automation(self):
+    def test_historical_python_source_neither_changes_nor_is_required_by_the_release(self):
+        first = build(self.root)
         package = self.root / 'server' / 'gravewright_swade' / '__init__.py'
         package.write_text("__version__ = '999.0.0'\n", encoding='utf-8')
-        with self.assertRaisesRegex(ValueError, 'versions must match'):
+        self.assertEqual(build(self.root)['sha256'], first['sha256'])
+        shutil.rmtree(self.root / 'server')
+        self.assertEqual(build(self.root)['sha256'], first['sha256'])
+
+    def test_build_rejects_server_execution_requirements(self):
+        manifest = read_json(self.root / 'manifest.json')
+        manifest['system']['combat']['requiresProvider'] = True
+        (self.root / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'without a required server provider'):
             build(self.root)
-        package.unlink()
-        with self.assertRaisesRegex(ValueError, 'missing or outside'):
+        manifest['system']['combat']['requiresProvider'] = False
+        manifest['django'] = {'apps': ['not_allowed.apps.Config']}
+        (self.root / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'entirely in the browser'):
             build(self.root)
 
     def test_validator_detects_source_changes_after_packaging(self):

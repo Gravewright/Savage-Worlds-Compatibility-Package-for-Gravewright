@@ -3,6 +3,7 @@ import {mountItemSheet} from './item-editor.js';
 import {mountCombatTracker} from './tracker.js';
 import {createSettingsManager} from './settings.js';
 import {openCustomization} from './customize.js';
+import {createLegacyCompatibility} from './legacy.js';
 
 let system;
 export default {
@@ -22,6 +23,14 @@ export default {
     active.unsubscribeLanguage = context.api.i18n.onChange?.(() => {
       for(const callback of [...languageListeners])callback();
     });
+    active.compatibility = createLegacyCompatibility(context);
+    try {await active.compatibility.refresh();}
+    catch (error) {
+      if (error.code === 'cancelled') throw error;
+      // The manager exposes the failed lookup. Sheets remain usable while
+      // combat commands require a successful compatibility check.
+    }
+    context.onDispose?.(() => active.compatibility.dispose?.());
     const settings = createSettingsManager(context);
     system.settings = settings;
     await settings.start();

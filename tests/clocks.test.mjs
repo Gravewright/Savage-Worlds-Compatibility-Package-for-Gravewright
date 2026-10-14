@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {advanceClocks,beginTurn} from '../clocks.js';
+import {advanceClocks,beginTurn,combatClockPhases} from '../clocks.js';
 const event=changes=>({phase:'end',roundBoundary:false,isCurrent:true,actorId:'caster',tokenId:'caster-token',documentKey:['actor','owner'],clockKeys:new Set(),...changes});
 const sheet=()=>({status:{distracted:true},statusClocks:{distracted:{remaining:1,phase:'end',owner:'self',awaitingStart:true}},
   effects:[{data:{active:true,remaining:2,phase:'start',owner:'self',duration:'User text'}}],combat:{cardInitiative:true}});
@@ -27,4 +27,14 @@ test('invalid or descriptive clock values do not become accidental numeric durat
     const initial={effects:[{data:{active:true,remaining,phase:'end',owner:'self'}}]};
     assert.equal(advanceClocks(initial,event()).changed,false);
   }
+});
+
+test('forward phase plans include defeated skips, the round boundary and no backward ticks',()=>{
+  const state={active:true,turn:0,combatants:[{id:'a'},{id:'b',defeated:true},{id:'c'}]};
+  const list=method=>combatClockPhases(state,method).map(event=>[event.phase,event.entry.id,event.roundBoundary]);
+  assert.deepEqual(list('nextTurn'),[['end','a',false],['start','b',false],['end','b',false],['start','c',false]]);
+  assert.deepEqual(list('nextRound'),[['end','a',true],['start','b',false],['end','b',false],['start','c',false],['end','c',false],['start','a',true]]);
+  state.turn=2;
+  assert.deepEqual(list('nextTurn'),[['end','c',true],['start','a',true]]);
+  for(const method of ['previousTurn','previousRound','setTurn','start','stop'])assert.deepEqual(list(method),[]);
 });

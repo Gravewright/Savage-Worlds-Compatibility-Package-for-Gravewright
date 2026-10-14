@@ -2,12 +2,17 @@ import {el, openModal, bindTranslation, refreshTranslations} from './ui.js';
 import {RULE_DEFAULTS} from './settings.js';
 import {createDeckImporter, validateDeckCatalog} from './deck-importer.js';
 import {PUBLIC_PACKAGE_NAME, OFFICIAL_LOGO, PERMISSION_NOTICE} from './permission.js';
+import {openLegacyMigration} from './legacy-ui.js';
 
 /** Optional native module hook: every control and asset belongs to this package. */
 export async function openCustomization(context, system) {
   if (system.customization?.isConnected) {system.customization.querySelector('button')?.focus();return;}
   const {api,assets,storage,signal} = context, t = system.t, doc = globalThis.document;
   await system.settings.refresh();
+  if (system.compatibility) {
+    try {await system.compatibility.refresh();}
+    catch (error) {if (signal.aborted || error.code === 'cancelled') throw error;}
+  }
   const modal = openModal(api,doc,()=>t('settings.title'),signal,()=>t('common.close'));
   modal.classList.add('gws-customization'); system.customization = modal;
   const body = el(doc,'div','gws-modal-body'), notice = el(doc,'p','gws-customize-notice'); notice.setAttribute('role','status'); notice.hidden = true;
@@ -129,6 +134,14 @@ export async function openCustomization(context, system) {
     const notice=el(doc,'p','gws-permission-notice',PERMISSION_NOTICE);notice.lang='en';notice.setAttribute('translate','no');
     const website=el(doc,'a','gws-button',()=>t('permission.officialRules'));website.href='https://peginc.com/';website.target='_blank';website.rel='noopener noreferrer';
     copy.append(notice,website);section.append(logo,copy);content.append(section);
+    const previous = system.compatibility?.current;
+    if (previous && previous.state !== 'absent') {
+      const migration = group('legacy.title');
+      migration.dataset.gwsLegacyMigration = '';
+      migration.append(el(doc,'p','gws-field-hint',()=>t(previous.active ? 'legacy.active' : previous.active === false ? 'legacy.inactive' : 'legacy.unknown')),
+        button('legacy.title',()=>openLegacyMigration(context,system)));
+      content.append(migration);
+    }
   }
   function render() {
     content.replaceChildren();
@@ -149,9 +162,12 @@ export async function openCustomization(context, system) {
   const unsubscribeLanguage=system.subscribeLanguage?.(()=>{
     refreshTranslations(modal);for(const preview of previews)if(preview.isConnected)refreshTranslations(preview);
   });
+  const unsubscribeCompatibility=system.compatibility?.subscribe(()=>{
+    if(modal.isConnected && !busy && tab==='about' && !content.contains(doc.activeElement))render();
+  });
   modal.addEventListener('gravewright:sheet-flush',event=>event.detail?.waitUntil?.(work ?? Promise.resolve()));
-  modal.addEventListener('close',()=>{unsubscribe();unsubscribeLanguage?.();cancelImport?.abort();if(system.customization===modal)system.customization=null;},{once:true});
-  context.onDispose?.(()=>{unsubscribe();unsubscribeLanguage?.();modal.close(true);});
+  modal.addEventListener('close',()=>{unsubscribe();unsubscribeLanguage?.();unsubscribeCompatibility?.();cancelImport?.abort();if(system.customization===modal)system.customization=null;},{once:true});
+  context.onDispose?.(()=>{unsubscribe();unsubscribeLanguage?.();unsubscribeCompatibility?.();modal.close(true);});
   render();
   await run(async()=>{catalog=validateDeckCatalog(await assets.json('assets/action-decks/catalogue.json'));decks=(await api.cards.state()).decks;});
   return modal;

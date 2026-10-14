@@ -4,7 +4,7 @@
 
 [English](README.md)
 
-Lançamento `gravewright.savage-worlds` **0.1.1** desta implementação para Django, revisado com a
+Lançamento `gravewright.savage-worlds` **0.1.1** para Gravewright VTT 0.2.3, revisado com a
 edição brasileira revisada de SWADE de 2026. Mantém o cabeçalho horizontal,
 as cinco abas e a paleta do VTT. Toda a lógica Savage Worlds fica neste projeto;
 o core oferece apenas seus contratos genéricos.
@@ -21,31 +21,31 @@ This game references the Savage Worlds game system, available from Pinnacle Ente
 
 ## Instalação
 
-Requer [Gravewright VTT **0.2.4 ou posterior**](https://github.com/Gravewright/gravewright/releases/tag/v0.2.4),
-SDK **1.0.0** e sua API de tradução. A versão 0.2.4 permite que sistemas
-contenham sua interface e suas automações de servidor no mesmo pacote.
+Funciona no [Gravewright VTT **0.2.3 já publicado**](https://github.com/Gravewright/gravewright/releases/tag/v0.2.3),
+com SDK **1.0.0** e sua API de tradução. Todo o código executado pertence a este
+pacote de sistema para o navegador.
 
 Baixe o ZIP do sistema na [release 0.1.1](https://github.com/Gravewright/Savage-Worlds-Compatibility-Package-for-Gravewright/releases/tag/v0.1.1),
 ou instale pelo Marketplace assinado do Gravewright em **Sistemas**.
 
 1. Instale `dist/gravewright-savage-worlds-0.1.1.zip` em **Sistemas**.
-2. Como proprietário do host, ative as automações pelo controle nativo do próprio
-   sistema em **Sistemas**. O Runner realiza o reinício.
-3. Selecione **Savage Worlds Compatibility Package for Gravewright 0.1.1** na
+2. Selecione **Savage Worlds Compatibility Package for Gravewright 0.1.1** na
    mesa. Mesas existentes precisam selecionar a versão nova explicitamente.
+3. Como mestre, abra **Extensões → Savage Worlds → Personalizar** e selecione ou
+   crie o baralho de ação nativo da mesa.
 
-Existe um único pacote de sistema: fichas, itens, configurações, traduções,
-cartas e relógios do servidor são distribuídos juntos. Não há um módulo SWADE
-separado para instalar. O ID do sistema, fichas e configurações são preservados.
-A ativação da versão 0.1.1 substitui automaticamente a ativação antiga do Server
-Rules, evitando carregar o provedor duas vezes. O arquivo instalado antigo fica
-preservado para reversão; dados da mesa e conteúdo do usuário não são removidos.
+Um único pacote de sistema reúne fichas, modelos de itens, configurações,
+traduções, imagens de cartas e automações de duração. O ID do sistema, as fichas
+e as configurações permanecem no namespace original.
 
-Atualize instalações anteriores do Gravewright para 0.2.4 antes desta versão.
+Se o complemento Server Rules anterior estiver instalado, **Personalizar → Sobre → Instalação anterior**
+permite que o proprietário revise e desative esse complemento. Essa operação já
+existente do host reinicia o servidor; remover o pacote exige outra escolha explícita
+com uma prévia das mesas que o usam. O sistema atual não exige esse complemento nem
+uma atualização do VTT. Fichas, opções e conteúdo permanecem no namespace do sistema.
 
-O build não instala nem ativa pacotes em produção e não altera `.env`.
-Avançar o combate exige a ativação das automações incluídas no sistema pelo
-proprietário do host.
+O build não instala pacotes em produção nem altera `.env`. O mestre avança o
+combate pelo tracker do pacote, usando as permissões existentes do host.
 
 ## Idiomas com o Translator oficial
 
@@ -55,7 +55,7 @@ interface** e escolha **Português (Brasil)**, **Español** ou **English**.
 O idioma pertence à conta de cada participante; o fluxo nativo recarrega a mesma
 mesa e conserva a escolha. A integração foi verificada com o Translator 0.1.2.
 
-O SWADE registra seus 646 rótulos por idioma pelo `context.i18n.register` e usa
+O SWADE registra seus rótulos nos três idiomas pelo `context.i18n.register` e usa
 `api.i18n.t` e `api.i18n.onChange`. Os catálogos ficam no pacote do sistema,
 isolados do catálogo nativo e dos outros módulos. Sem um pacote de idioma ativo,
 o host usa inglês. A interface é marcada com `translate="no"` para evitar
@@ -152,9 +152,13 @@ o início exige pelo menos um participante e um baralho selecionado disponível.
 e o turno atual; **Retomar** continua dessa posição salva. A pausa persiste ao
 reabrir o painel. **Encerrar combate** conclui o encontro. O painel indica se
 o combate está parado, em andamento ou pausado.
-Os turnos e as permissões pertencem ao combate nativo. O próprio sistema
-avança relógios configurados, inclusive em turnos pulados, sem rolar ações ou
-dano por conta própria. Voltar no combate não desfaz resultados ou recursos.
+Os turnos e as permissões pertencem ao combate nativo. O mestre avança os relógios
+configurados pelo tracker do sistema, inclusive em turnos pulados, sem rolar ações
+ou dano por conta própria. Planos de operação persistidos e revisões nativas dos
+documentos permitem retomar trabalho interrompido sem repetir etapas concluídas.
+As gravações são etapas recuperáveis, e não uma transação única entre todas as
+fichas. Voltar no combate não desfaz resultados ou recursos. A automação funciona
+enquanto o mestre usa a mesa; não executa em segundo plano após todos fecharem a mesa.
 
 ## Modais e dados
 
@@ -170,8 +174,9 @@ compartilham a ficha; snapshots independentes preservam seus próprios dados.
 
 Os dados ficam diretamente em `api.actors.sheet(...).data`, com `schemaVersion: 2`.
 Dados dos protótipos anteriores e campos adicionais são preservados pela normalização.
-Código de servidor: `server/gravewright_swade`, sem modelos, tabelas, rotas ou
-dependências adicionais no host.
+O código Python histórico em `server/` é mantido apenas como referência de
+desenvolvimento e fixture de migração. Ele não entra na release atual e não é
+necessário para executar o sistema.
 
 ## Verificação e build
 
@@ -183,13 +188,14 @@ python tests/test_modal_browser.py
 python tests/test_actions_browser.py
 python tests/test_customization_browser.py
 python tests/e2e/languages.py
-python server/tests/run_django_tests.py
+python tests/run_host_tests.py
 python scripts/build.py
 python scripts/validate_package.py
 ```
 
 As suítes em `tests/e2e` instalam ZIPs reais em banco, mídia e mesa descartáveis,
 sem alterar `.env` ou dados em uso. O único ZIP do sistema inclui a interface
-e seu namespace Python; ferramentas, testes e referências privadas são excluídos.
+para o navegador, arquivos, traduções locais e avisos de licença. Código Python,
+ferramentas, testes e referências privadas são excluídos.
 O ZIP tem SHA-256. Código original sob
 [MIT](LICENSE.md); escopo em [NOTICE.md](NOTICE.md).

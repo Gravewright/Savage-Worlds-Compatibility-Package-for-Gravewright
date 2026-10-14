@@ -1,4 +1,4 @@
-"""Build one deterministic system ZIP with browser UI and server automation."""
+"""Build one deterministic browser system ZIP for released Gravewright hosts."""
 from datetime import datetime, timezone
 import hashlib
 import json

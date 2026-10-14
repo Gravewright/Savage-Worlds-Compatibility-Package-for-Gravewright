@@ -14,8 +14,9 @@ for item in record['artifacts']:
     with zipfile.ZipFile(archive) as package:
         manifest=json.loads(package.read('manifest.json'))
         assert manifest['id']==item['id'] and manifest['version']==version
-        assert manifest['django']['apps']==['gravewright_swade.apps.SwadeConfig']
-        assert 'gravewright_swade/combat.py' in package.namelist()
+        assert 'django' not in manifest
+        assert manifest['system']['combat']['requiresProvider'] is False
+        assert not any(name.endswith(('.py', '.pyc', '.pyd')) or name.startswith(('server/', 'gravewright_swade/')) for name in package.namelist())
         assert notice in package.read('NOTICE.md').decode('utf-8')
         assert notice in package.read('README.md').decode('utf-8')
         if item['type']=='system':

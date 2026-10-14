@@ -4,7 +4,7 @@
 
 [Português](README.pt-BR.md)
 
-Release **`gravewright.savage-worlds` 0.1.1** of this Django-compatible implementation,
+Release **`gravewright.savage-worlds` 0.1.1** for Gravewright VTT 0.2.3,
 reviewed against the revised 2026 Brazilian SWADE edition. The horizontal header, five tabs and VTT
 palette remain. System models, UI and numerical rules live in this project;
 the host supplies only generic document, dice, card, combat and modal contracts.
@@ -21,30 +21,30 @@ This game references the Savage Worlds game system, available from Pinnacle Ente
 
 ## Installation
 
-Requires [Gravewright **0.2.4 or later**](https://github.com/Gravewright/gravewright/releases/tag/v0.2.4),
-SDK **1.0.0** and its translation API. Version 0.2.4 supports systems that
-contain both their browser interface and trusted server automation.
+Works with the published [Gravewright **0.2.3**](https://github.com/Gravewright/gravewright/releases/tag/v0.2.3),
+SDK **1.0.0** and its translation API. All runtime code belongs to this browser system.
 
 Download the system ZIP from the [0.1.1 release](https://github.com/Gravewright/Savage-Worlds-Compatibility-Package-for-Gravewright/releases/tag/v0.1.1),
 or install it through the signed Gravewright Marketplace under **Systems**.
 
 1. Install `dist/gravewright-savage-worlds-0.1.1.zip` under **Systems**.
-2. As host owner, activate the system's server automation from its native
-   activation control in **Systems**. The managed Runner restarts the host.
-3. Select **Savage Worlds Compatibility Package for Gravewright 0.1.1** for
-   the table. Existing tables must explicitly select the new package version.
+2. Select **Savage Worlds Compatibility Package for Gravewright 0.1.1** for the
+   table. Existing tables must explicitly select the new package version.
+3. As GM, open **Extensions → Savage Worlds → Customize** and select or create
+   the table's native action deck.
 
-There is one system package: sheets, item templates, settings, translations,
-cards and server clocks all ship together. There is no separate SWADE module
-to install. Package ID, actor data and table settings remain unchanged.
-Activating 0.1.1 replaces the legacy Server Rules activation automatically, so
-the combat provider is loaded only once. Its old installed archive is retained
-for rollback; table data and authored content are not migrated or deleted.
+One system package contains sheets, item templates, settings, translations,
+card artwork and duration automation. Package ID, sheet data and table settings
+remain in their original namespace.
 
-Update older Gravewright installations to 0.2.4 before installing this version.
+If the earlier Server Rules companion is installed, **Customize → About → Previous installation**
+lets the installation owner review and deactivate it. This existing host operation
+restarts the server; removal is a separate explicit choice with a table-usage preview.
+The current system requires neither that companion nor a VTT update. Existing
+sheet data, settings and authored content remain in their system namespace.
 
-Builds do not activate production packages or edit `.env`. Combat advancement
-requires the bundled server provider to be activated by the host owner.
+Builds do not install production packages or edit `.env`. The GM advances combat
+through this package's tracker using the host's existing permissions.
 
 ## Languages through the official Translator
 
@@ -54,7 +54,7 @@ language** and choose **English**, **Português (Brasil)** or **Español**.
 The native flow saves each participant's account preference and reloads the
 same table. Integration is verified with Translator 0.1.2.
 
-SWADE registers 646 labels per language using `context.i18n.register`, then uses
+SWADE registers its labels in all three languages using `context.i18n.register`, then uses
 `api.i18n.t` and `api.i18n.onChange`. Private system catalogs stay isolated from
 the host and other modules. Without an active language package the host uses
 English. Owned UI has `translate="no"` to avoid a second legacy translation.
@@ -142,9 +142,13 @@ round and current turn; **Resume** continues from that saved position.
 The paused state persists across reopening the panel. **Stop combat** concludes
 the encounter. The panel shows whether combat is stopped, in progress or paused.
 The GM can adjust the shared Benny pool and grant one to an NPC/Extra without one.
-The server provider advances configured clocks, including skipped turns, without
-automatically rolling actions or damage. Moving backward does not undo outcomes
-or resources already resolved.
+The GM advances configured clocks through the package tracker, including skipped
+turns, without automatically rolling actions or damage. Durable operation plans
+and native document revisions allow interrupted work to resume without repeating
+completed ticks. These document writes are recoverable steps, rather than one
+transaction across every sheet. Moving backward does not undo outcomes or resources
+already resolved. Automation runs while the GM uses the table; it does not run in
+the background after all participants close it.
 
 ## Modals and data
 
@@ -157,8 +161,9 @@ Autosave uses native versions. Conflicts preserve drafts until explicit review.
 Host permissions remain authoritative, including the GM requirement for generated
 Support effects. Linked tokens share actors; independent tokens keep their own
 snapshots. Data is stored directly in sheet `data` with `schemaVersion: 2`.
-Data from earlier prototypes and unknown fields are preserved. Server code lives under
-`server/gravewright_swade`, without new host models, tables, routes or dependencies.
+Data from earlier prototypes and unknown fields are preserved. Historical Python
+code under `server/` is kept only as a development reference and migration fixture;
+it is excluded from the current release and is not needed to run the system.
 
 ## Validation and build
 
@@ -170,13 +175,13 @@ python tests/test_modal_browser.py
 python tests/test_actions_browser.py
 python tests/test_customization_browser.py
 python tests/e2e/languages.py
-python server/tests/run_django_tests.py
+python tests/run_host_tests.py
 python scripts/build.py
 python scripts/validate_package.py
 ```
 
 Suites in `tests/e2e` install actual ZIPs into disposable databases, media and
 tables without changing `.env` or live data. The single system ZIP contains the
-browser runtime and its Python namespace. Tools, tests and private references
-are excluded. The ZIP has a SHA-256 sidecar.
+browser runtime, assets, local translations and licensing notices. Python code,
+tools, tests and private references are excluded. The ZIP has a SHA-256 sidecar.
 Original code uses [MIT](LICENSE.md); see [NOTICE.md](NOTICE.md).

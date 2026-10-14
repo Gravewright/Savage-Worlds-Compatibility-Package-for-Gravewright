@@ -2,7 +2,8 @@ import { cloneData } from './model.js';
 import { selectCard, mustRedraw, groupCombatants, cardFromScore, cardDisplay } from './initiative.js';
 import { validateDeckChoice, nativeCardFacts } from './deck-config.js';
 import { el, openModal, bindTranslation, refreshTranslations } from './ui.js';
-import { advanceClocks } from './clocks.js';
+import { advanceClocks, combatClockPhases } from './clocks.js';
+import { openLegacyMigration } from './legacy-ui.js';
 
 const uuid = () => globalThis.crypto?.randomUUID?.() ?? `tracker-${Date.now()}-${Math.random()}`;
 const identity = entry => entry.token_id ? { tokenId: entry.token_id } : { actorId: entry.actor_id };
@@ -14,7 +15,7 @@ const npcBennyTarget = view => view.actorType === 'npc' || view.data?.profile?.k
   || ['ally', 'enemy'].includes(view.data?.profile?.role);
 
 /** Native APIs retain authorization and transaction boundaries; table storage never contains hidden card faces. */
-export function createTrackerController({ api, storage, sceneId, settings, t = key => key }) {
+export function createTrackerController({ api, storage, sceneId, settings, compatibility, t = key => key }) {
   const key = `initiative.scene.${safePart(sceneId)}`;
   const intentKey = `${key}.intent.pending`, acknowledgedIntents = new Set();
   let state, cards, publicRecord, owner, operation, privateRecord, intentRecord;
@@ -173,7 +174,7 @@ export function createTrackerController({ api, storage, sceneId, settings, t = k
   async function begin(kind, round, requestedId, details = {}) {
     await refresh(); if (!cards.isGM) throw error('permission_denied');
     const progressesCombat = !kind.startsWith('gm-benny-');
-    if (progressesCombat) requireRunning();
+    if (progressesCombat) {requireRunning(); await compatibility?.assertReady();}
     const owner = await ownerId();
     const pending = publicRecord?.value?.operation;
     if (pending && (pending.owner !== owner || pending.kind !== kind || requestedId && pending.id !== requestedId)) throw error('operation-busy');
@@ -254,6 +255,57 @@ export function createTrackerController({ api, storage, sceneId, settings, t = k
   }
   async function combatStep(name, method, payload = {}) {
     return nativeStep(name, 'combat', method, async () => ({ ...payload, sceneId, version: (await api.combat.state({ sceneId })).version }));
+  }
+  async function clockPlan(combat, phases) {
+    const documents = new Map(), sources = new Map();
+    for (const entry of combat.combatants.slice(0, 64)) {
+      const view = await api.actors.sheet(entry.actor_id, sheetContext(entry));
+      const independent = !!view.tokenId, documentKey = independent ? ['token', view.tokenId] : ['actor', entry.actor_id];
+      sources.set(entry.id, {actorId: entry.actor_id, tokenId: entry.token_id ?? '', independent});
+      documents.set(JSON.stringify(documentKey), {documentKey,
+        entry: {actor_id: entry.actor_id, token_id: independent ? view.tokenId : null}});
+    }
+    return {documents: [...documents.values()], events: phases.map(phase => {
+      const source = sources.get(phase.entry.id);
+      if (!source) throw error('not_found');
+      return {...source, phase: phase.phase, roundBoundary: phase.roundBoundary};
+    })};
+  }
+  async function applyClockPlan(name, plan) {
+    for (const [index, document] of plan.documents.entries()) {
+      const advance = data => {
+        let value = data, changed = false;
+        const clockKeys = new Set();
+        for (const event of plan.events) {
+          const isCurrent = document.documentKey[0] === 'token'
+            ? document.entry.token_id === event.tokenId
+            : !event.independent && document.entry.actor_id === event.actorId;
+          const result = advanceClocks(value, {...event, isCurrent, documentKey: document.documentKey, clockKeys});
+          value = result.sheet; changed ||= result.changed;
+        }
+        return {sheet: value, changed};
+      };
+      const view = await api.actors.sheet(document.entry.actor_id, sheetContext(document.entry));
+      if (advance(view.data).changed) await actorStep(`clocks-${name}-${index}`, document.entry,
+        data => advance(data).sheet);
+    }
+  }
+  async function clockedCombatStep(name, method, payload = {}) {
+    if (!['nextTurn', 'nextRound'].includes(method)) return combatStep(name, method, payload);
+    const result = await nativeStep(name, 'combat', method, async () => {
+      const before = await api.combat.state({sceneId});
+      const metadata = cloneData(privateRecord.value);
+      metadata.clockPlans ??= {};
+      metadata.clockPlans[name] = await clockPlan(before, combatClockPhases(before, method));
+      // This recoverable plan commits before the native command. A rejected
+      // native CAS rebuilds it; a lost response reuses the accepted command UUID.
+      await savePrivate(metadata);
+      return {...payload, sceneId, version: before.version};
+    });
+    const plan = privateRecord.value.clockPlans?.[name];
+    if (!plan) throw error('clock-plan-missing');
+    await applyClockPlan(name, plan);
+    return result;
   }
   async function deckStep(name, method, deckId) {
     return nativeStep(name, 'cards', method, async () => {
@@ -433,6 +485,8 @@ export function createTrackerController({ api, storage, sceneId, settings, t = k
   }
   async function transition(method) {
     await refresh();
+    requireRunning();
+    if (!cards.isGM) throw error('permission_denied');
     const kind = `transition-${method}`, recovered = await recoverIntent(kind);
     if (recovered) {
       if (!completion(recovered)?.cancelled && state.active && (publicRecord?.value.round !== state.round || publicRecord?.value.encounterId !== state.encounterId)) await dealRound();
@@ -440,25 +494,18 @@ export function createTrackerController({ api, storage, sceneId, settings, t = k
     }
     requireRunning();
     if (method === 'start') await pinDeck();
-    if (!cards.isGM && publicRecord?.value.operation) throw error('operation-busy');
-    if (cards.isGM && publicRecord?.value.operation?.kind === 'deal') return dealRound();
-    if (cards.isGM && publicRecord?.value.operation?.kind === 'round-start') return beginRound();
-    if (cards.isGM && !publicRecord?.value.operation && state.active && publicRecord?.value.round !== state.round && method !== 'start') return dealRound();
-    let result;
-    if (cards.isGM) {
-      const begun = await begin(kind, state.round);
-      if (begun.completed) {
-        if (state.active && (publicRecord?.value.round !== state.round || publicRecord?.value.encounterId !== state.encounterId)) await dealRound();
-        return acknowledgeIntent(begun.journal);
-      }
-      result = await combatStep('transition', method);
-      await finish(() => {});
+    if (publicRecord?.value.operation?.kind === 'deal') return dealRound();
+    if (publicRecord?.value.operation?.kind === 'round-start') return beginRound();
+    if (!publicRecord?.value.operation && state.active && publicRecord?.value.round !== state.round && method !== 'start') return dealRound();
+    const begun = await begin(kind, state.round);
+    if (begun.completed) {
       if (state.active && (publicRecord?.value.round !== state.round || publicRecord?.value.encounterId !== state.encounterId)) await dealRound();
       return acknowledgeIntent(begun.journal);
-    } else result = await api.combat[method]({ sceneId });
-    await refresh();
-    if (cards.isGM && state.active && (publicRecord?.value.round !== state.round || publicRecord?.value.encounterId !== state.encounterId)) await dealRound();
-    return result;
+    }
+    await clockedCombatStep('transition', method);
+    await finish(() => {});
+    if (state.active && (publicRecord?.value.round !== state.round || publicRecord?.value.encounterId !== state.encounterId)) await dealRound();
+    return acknowledgeIntent(begun.journal);
   }
   async function start() {
     await refresh();
@@ -478,30 +525,12 @@ export function createTrackerController({ api, storage, sceneId, settings, t = k
     const first = state.combatants.find(entry => entry.initiative > 0 && !entry.defeated);
     if (first) {
       await combatStep('round-first', 'setTurn', identity(first));
-      const firstView = await api.actors.sheet(first.actor_id, sheetContext(first)), firstIndependent = !!firstView.tokenId;
-      const documents = new Map(), actors = await api.actors.list();
-      for (const actor of actors) documents.set(`actor:${actor.id}`, { actor_id: actor.id, token_id: null });
-      for (const entry of state.combatants) {
-        const view = await api.actors.sheet(entry.actor_id, sheetContext(entry));
-        if (view.tokenId) documents.set(`token:${view.tokenId}`, entry);
+      if (!privateRecord.value.roundStartPlan) {
+        const metadata = cloneData(privateRecord.value);
+        metadata.roundStartPlan = await clockPlan(state, [{entry: first, phase: 'start', roundBoundary: false}]);
+        await savePrivate(metadata);
       }
-      const clockKeys = new Set(); let index = 0;
-      for (const entry of documents.values()) {
-        const view = await api.actors.sheet(entry.actor_id, sheetContext(entry)), independent = !!view.tokenId;
-        const event = { actorId: first.actor_id, tokenId: first.token_id ?? null,
-          isCurrent: independent ? entry.token_id === first.token_id : !firstIndependent && entry.actor_id === first.actor_id,
-          roundBoundary: false, phase: 'start', documentKey: independent ? ['token', entry.token_id] : ['actor', entry.actor_id], clockKeys };
-        const probe = advanceClocks(view.data, { ...event, clockKeys: new Set(clockKeys) });
-        if (probe.changed) {
-          let acceptedKeys;
-          await actorStep(`round-start-${index}`, entry, data => {
-            acceptedKeys = new Set(clockKeys);
-            return advanceClocks(data, { ...event, clockKeys: acceptedKeys }).sheet;
-          });
-          for (const claimed of acceptedKeys ?? []) clockKeys.add(claimed);
-        }
-        index++;
-      }
+      await applyClockPlan('round-start', privateRecord.value.roundStartPlan);
     }
     return finish(value => { value.phase = 'playing'; });
   }
@@ -572,7 +601,7 @@ export function createTrackerController({ api, storage, sceneId, settings, t = k
     }
     requireRunning();
     await actorStep('holding-state', entry, data => { data.status ??= {}; data.status.holding = holding; });
-    if (holding && begun.journal.value.details.current) await combatStep('holding-next', 'nextTurn');
+    if (holding && begun.journal.value.details.current) await clockedCombatStep('holding-next', 'nextTurn');
     else if (!holding) await combatStep('holding-turn', 'setTurn', identity(entry));
     await finish(() => {});
     if (state.active && (publicRecord?.value.round !== state.round || publicRecord?.value.encounterId !== state.encounterId)) await dealRound();
@@ -616,7 +645,8 @@ export function createTrackerController({ api, storage, sceneId, settings, t = k
 
 export async function mountCombatTracker(block, system) {
   const { root, api, storage, context, signal } = block, doc = root.ownerDocument, t = system.t;
-  const controller = createTrackerController({ api, storage, sceneId: context.sceneId, settings: system.settings, t });
+  const controller = createTrackerController({ api, storage, sceneId: context.sceneId, settings: system.settings,
+    compatibility: system.compatibility, t });
   const shell = el(doc, 'section', 'gws-tracker gw-combat-panel'); shell.setAttribute('translate', 'no'); root.append(shell);
   const pending = new Set();
   let view, busy = false, failure = '', disposed = false, retryTask, currentModal, synchronization;
@@ -753,10 +783,16 @@ export async function mountCombatTracker(block, system) {
         iconButton('tracker.nextRound', 'round', controller.nextRound, !state.active || locked || tracker.phase !== 'playing'),
         iconButton('tracker.add', 'add', add, locked),
         iconButton('tracker.configureDeck', 'settings', deckSettings, state.active || !!tracker.operation));
-    } else if (state.active && shown.some(entry => (entry.current || entry.is_current) && entry.canControl)) {
-      controls.append(iconButton('tracker.next', 'next', controller.next, locked || tracker.phase !== 'playing', true));
     }
     panel.append(controls);
+    if (!isGM && state.active) panel.append(el(doc, 'p', 'gws-tracker-gm-controls', () => t('tracker.gmControls')));
+    const legacy = system.compatibility?.current;
+    if (legacy && legacy.state !== 'absent') {
+      const message = legacy.active ? 'tracker.error.legacy-server-active'
+        : legacy.state === 'unknown' ? 'tracker.error.legacy-status-unavailable' : 'legacy.inactive';
+      panel.append(el(doc, 'p', 'gws-tracker-compatibility', () => t(message)),
+        button('legacy.title', () => openLegacyMigration(block, system), busy));
+    }
     if (!state.active && isGM && !view.deck) panel.append(el(doc, 'p', 'gws-tracker-deck-needed', () => t('tracker.deckNeeded')));
     if (isGM) {
       const deal = el(doc, 'div', 'gw-combat-rollbar');
@@ -901,13 +937,15 @@ export async function mountCombatTracker(block, system) {
   const unsubscribe = api.events.on('combat.changed', () => { nativeChanged = true; void synchronize(); });
   const unsubscribeCards = api.events.on('cards.changed', () => { nativeChanged = true; void synchronize(); });
   const unsubscribeSettings = system.settings?.subscribe(() => { nativeChanged = true; void synchronize(); });
+  const unsubscribeCompatibility = system.compatibility?.subscribe(() => {if (!disposed && !busy) render();});
   const unsubscribeLanguage = system.subscribeLanguage?.(() => {refreshTranslations(shell);if(currentModal?.isConnected)refreshTranslations(currentModal);});
   // Persistent table storage has no change event. Poll only while this surface
   // is mounted so existing players and other GM clients also receive the pause.
   const poll = setInterval(() => { if (!doc.hidden) void synchronize(); }, 2000);
   doc.addEventListener('visibilitychange', () => { if (!doc.hidden) { nativeChanged = true; void synchronize(); } }, { signal });
   doc.defaultView?.addEventListener('focus', () => { nativeChanged = true; void synchronize(); }, { signal });
-  block.onDispose(() => { disposed = true; clearInterval(poll); unsubscribe(); unsubscribeCards(); unsubscribeSettings?.(); unsubscribeLanguage?.(); shell.remove(); });
+  block.onDispose(() => { disposed = true; clearInterval(poll); unsubscribe(); unsubscribeCards(); unsubscribeSettings?.();
+    unsubscribeCompatibility?.(); unsubscribeLanguage?.(); shell.remove(); });
   if (needsDeal()) void run(controller.dealRound);
   return controller;
 }

@@ -1,9 +1,8 @@
-"""Prepare a real installed system for isolated tests before Django startup.
+"""Install the browser system into isolated released-VTT fixtures.
 
-The short-lived bootstrap process writes the same verified activation plan used
-by the managed Runner. The subsequent test process loads Python from the package
-archive, never from this repository's server source directory. Native activation
-authorization and managed restarts are covered by the host's own integration tests.
+Only an explicit migration scenario seeds the historical server-only companion.
+That fixture is built from archived source, never from the current system ZIP.
+The current system neither registers Python apps nor changes their activation.
 """
 import io
 import json
@@ -33,42 +32,41 @@ def main():
     django.setup()
     from django.core.management import call_command
     from gravewright.modules.packages import host as package_host
-    from gravewright.modules.server_apps import plan
-    from config.marketplace_apps import registry_path
-    from scripts.update_supervisor import write
     call_command('migrate', verbosity=0, interactive=False)
     engine = package_host()
     if legacy_companion:
         # Reproduce the published companion's shape with synthetic fixture
         # metadata. Nothing here becomes part of the distributed system ZIP.
+        from gravewright.modules.server_apps import plan
+        from config.marketplace_apps import registry_path
+        from scripts.update_supervisor import write
         with zipfile.ZipFile(archive) as package:
-            unified = json.loads(package.read('manifest.json'))
-            legacy = {key: unified[key] for key in
-                      ('name', 'description', 'author', 'license', 'sdk')}
-            legacy.update({'id': unified['django']['replaces'][0], 'version': '0.1.0',
-                           'django': {'apps': unified['django']['apps']}})
-            raw = io.BytesIO()
-            with zipfile.ZipFile(raw, 'w') as output:
-                output.writestr('manifest.json', json.dumps(legacy))
-                for name in package.namelist():
-                    if name.startswith('gravewright_swade/') and name.endswith('.py'):
-                        content = package.read(name)
-                        if name == 'gravewright_swade/__init__.py':
-                            content = content.replace(unified['version'].encode(), b'0.1.0')
-                        output.writestr(name, content)
+            current = json.loads(package.read('manifest.json'))
+        legacy = {key: current[key] for key in ('name', 'description', 'author', 'license', 'sdk')}
+        legacy.update({'id': 'gravewright.savage-worlds.rules', 'version': '0.1.0',
+                       'django': {'apps': ['gravewright_swade.apps.SwadeConfig']}})
+        raw = io.BytesIO()
+        historical = Path(__file__).resolve().parents[1] / 'server' / 'gravewright_swade'
+        with zipfile.ZipFile(raw, 'w') as output:
+            output.writestr('manifest.json', json.dumps(legacy))
+            for source in sorted(historical.rglob('*.py')):
+                if '__pycache__' in source.parts:
+                    continue
+                content = source.read_bytes()
+                if source.name == '__init__.py':
+                    content = content.replace(current['version'].encode(), b'0.1.0')
+                output.writestr('gravewright_swade/' + source.relative_to(historical).as_posix(), content)
         previous = engine.install_local(raw.getvalue(), expected_type='module')
         write(registry_path(engine.directory), plan(previous['id'], previous['version'], True))
     installed = engine.install_local(archive.read_bytes(), expected_type='system')
-    selected = plan(installed['id'], installed['version'], True)
-    if set(selected) != {installed['id']}:
-        raise RuntimeError('The fixture must activate only its one system package')
-    write(registry_path(engine.directory), selected)
+    if 'django' in installed or not installed.get('entry'):
+        raise RuntimeError('The current system fixture must contain only browser runtime')
     if legacy_companion:
         from gravewright.modules.models import Package
         if not Package.objects.filter(module_id=previous['id'], version=previous['version']).exists():
             raise RuntimeError('Legacy archive identity must remain available for rollback')
     print(json.dumps({'installedSystem': installed['id'], 'version': installed['version'],
-                      'bundledServerApps': selected[installed['id']]['django']['apps']}), flush=True)
+                      'browserOnly': True, 'legacyCompanion': legacy_companion}), flush=True)
 
 
 if __name__ == '__main__':

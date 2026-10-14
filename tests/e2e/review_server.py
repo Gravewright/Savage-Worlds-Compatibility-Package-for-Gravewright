@@ -89,15 +89,14 @@ def create_fixture(root: Path, fixture: Path, archive: Path, translator: Path | 
     schema = json.loads((root / 'gravewright/modules/contracts/schemas/manifest.json').read_text(encoding='utf-8'))
     with ZipFile(archive) as package_archive:
         manifest = json.loads(package_archive.read('manifest.json'))
+        if 'django' in manifest or any(name.endswith(('.py', '.pyc', '.pyd')) for name in package_archive.namelist()):
+            raise ValueError('The current SWADE system must install as browser-only on Gravewright 0.2.3')
     issues = list(validator_for(schema)(schema).iter_errors(manifest))
     if issues:
         details = '; '.join(f"{'/'.join(map(str, issue.path))}: {issue.message}" for issue in issues)
         raise ValueError(f'Package violates the host manifest contract: {details}')
     import django
     django.setup()
-    import gravewright_swade
-    if not Path(gravewright_swade.__file__).resolve().is_relative_to(fixture / 'modules' / 'packages'):
-        raise RuntimeError('The fixture must load server automation from the installed system ZIP')
     from django.conf import settings
     from django.core.management import call_command
     from django.test import Client

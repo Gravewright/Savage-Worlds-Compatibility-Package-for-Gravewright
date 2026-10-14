@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTrackerController } from '../tracker.js';
-import { advanceClocks } from '../clocks.js';
 
 const copy = value => structuredClone(value);
 const fail = code => Object.assign(new Error(code), { code });
@@ -71,11 +70,10 @@ function fixture({ names = ['A ♠', '★ 1'], isGM = true, lostDraw = false, lo
     async nextTurn(payload, options) { return receipt(options, () => {
       if (payload.version !== encounter.version) throw fail('conflict');
       count.nextTurn++;
-      const previous = encounter.combatants[encounter.turn], actor = actors.get(previous.actor_id);
-      const clocks = advanceClocks(actor.data, {phase: 'end', isCurrent: true, actorId: previous.actor_id, tokenId: null,
-        roundBoundary: encounter.turn === encounter.combatants.length - 1, documentKey: ['actor', actor.id], clockKeys: new Set()});
-      if (clocks.changed) {actor.data = clocks.sheet; actor.version++; actor.sheetVersion++;}
-      encounter.turn++; if (encounter.turn >= encounter.combatants.length) {encounter.turn = 0; encounter.round++;}
+      for (let step = 0; step < encounter.combatants.length; step++) {
+        encounter.turn++; if (encounter.turn >= encounter.combatants.length) {encounter.turn = 0; encounter.round++;}
+        if (!encounter.combatants[encounter.turn].defeated) break;
+      }
       encounter.version++; return current();
     }); },
     async previousTurn(payload, options) { return receipt(options, () => {
@@ -855,4 +853,163 @@ test('another GM Stop cancels a partial Benny operation publicly without writing
   assert.deepEqual([...f.actors], stopped.actors); assert.deepEqual(f.count, stopped.count); assert.deepEqual(f.encounter, stopped.encounter);
   assert.equal(await f.storage.user.get('initiative.scene.scene.intent.pending'), null);
   await f.controller().selectDeck('deck'); await f.controller().start(); assert.equal(f.count.start, 1);
+});
+
+function playingFixture(options = {}) {
+  const f = fixture({names:['A ♠','K ♥'], ...options});
+  const record = f.storage.table.values.get('initiative.scene.scene');
+  Object.assign(record.value, {encounterId:'encounter', round:1, phase:'playing'});
+  return f;
+}
+
+test('the system advances end, source-start, active power and owner-start clocks without a server provider', async () => {
+  const f = playingFixture(), a = f.actors.get('a'), b = f.actors.get('b');
+  a.data.effects = [{data:{active:true,remaining:2,phase:'end',owner:'self'}},
+    {data:{active:true,remaining:2,phase:'start',owner:'source',sourceActorId:'b'}}];
+  a.data.activePowers = [{active:true,durationRounds:1,remainingRounds:1}];
+  b.data.effects = [{data:{active:true,remaining:2,phase:'start',owner:'self'}}];
+  b.data.status = {distracted:true};
+  b.data.statusClocks = {distracted:{remaining:1,phase:'end',owner:'self',awaitingStart:true}};
+  await f.controller().next();
+  assert.equal(f.count.nextTurn,1);
+  assert.deepEqual(a.data.effects.map(entry=>entry.data.remaining),[1,1]);
+  assert.equal(a.data.activePowers[0].active,false);
+  assert.equal(b.data.effects[0].data.remaining,1);
+  assert.equal(b.data.statusClocks.distracted.awaitingStart,false);
+  await f.controller().previous();
+  assert.deepEqual(a.data.effects.map(entry=>entry.data.remaining),[1,1]);
+  assert.equal(b.data.effects[0].data.remaining,1);
+});
+
+test('lost clock-save responses keep advancement locked and recover all remaining clocks without another native turn', async () => {
+  const f = playingFixture();
+  for(const actor of f.actors.values())actor.data.effects=[{data:{active:true,remaining:3,phase:'end',owner:'self'}},
+    {data:{active:true,remaining:3,phase:'start',owner:'self'}}];
+  const save = f.api.actors.saveSheet; let lost = false;
+  f.api.actors.saveSheet = async (...args) => {
+    const result = await save(...args);
+    if(!lost){lost=true;throw fail('unavailable');}return result;
+  };
+  await assert.rejects(f.controller().next(),{code:'unavailable'});
+  assert.equal(f.count.nextTurn,1);
+  const otherGM=createTrackerController({api:f.api,storage:{table:f.storage.table,user:store()},sceneId:'scene'});
+  await assert.rejects(otherGM.next(),{code:'operation-busy'});
+  await assert.rejects(f.controller().pause(),{code:'operation-busy'});
+  await f.controller().next();
+  assert.equal(f.count.nextTurn,1);
+  assert.deepEqual(f.actors.get('a').data.effects.map(entry=>entry.data.remaining),[2,3]);
+  assert.deepEqual(f.actors.get('b').data.effects.map(entry=>entry.data.remaining),[3,2]);
+  assert.equal((await f.controller().refresh()).tracker.operation,null);
+});
+
+test('a lost native next-turn response replays its UUID before applying browser clocks exactly once', async () => {
+  const f=playingFixture(), next=f.api.combat.nextTurn;let lost=false;
+  f.actors.get('a').data.effects=[{data:{active:true,remaining:3,phase:'end',owner:'self'}}];
+  f.api.combat.nextTurn=async(...args)=>{const result=await next(...args);if(!lost){lost=true;throw fail('unavailable');}return result;};
+  await assert.rejects(f.controller().next(),{code:'unavailable'});
+  assert.equal(f.actors.get('a').data.effects[0].data.remaining,3);
+  await f.controller().next();
+  assert.equal(f.count.nextTurn,1);assert.equal(f.actors.get('a').data.effects[0].data.remaining,2);
+});
+
+test('a rejected sheet CAS rebases clock changes on current data with a new receipt and preserves unrelated edits', async () => {
+  const f=playingFixture(), save=f.api.actors.saveSheet, requests=[];let raced=false;
+  f.actors.get('a').data.effects=[{data:{active:true,remaining:3,phase:'end',owner:'self'}}];
+  f.api.actors.saveSheet=async(payload,options)=>{
+    requests.push(options.requestId);
+    if(!raced){raced=true;const actor=f.actors.get(payload.actorId);actor.data.notes='Concurrent authored note';actor.version++;actor.sheetVersion++;}
+    return save(payload,options);
+  };
+  await f.controller().next();
+  assert.equal(f.actors.get('a').data.notes,'Concurrent authored note');
+  assert.equal(f.actors.get('a').data.effects[0].data.remaining,2);
+  assert.equal(f.count.nextTurn,1);assert.equal(requests.length,2);assert.notEqual(requests[0],requests[1]);
+});
+
+test('only the GM may advance package clocks, and compatibility failures block before native commands or reservations', async () => {
+  const player=playingFixture({isGM:false});
+  await assert.rejects(player.controller().next(),{code:'permission_denied'});
+  assert.equal(player.count.nextTurn,0);assert.equal(player.storage.user.values.size,0);
+  const f=playingFixture(), before=copy([...f.storage.table.values]);
+  const controller=createTrackerController({api:f.api,storage:f.storage,sceneId:'scene',
+    compatibility:{async assertReady(){throw fail('legacy-server-active');}}});
+  await assert.rejects(controller.next(),{code:'legacy-server-active'});
+  assert.equal(f.count.nextTurn,0);assert.deepEqual([...f.storage.table.values],before);
+  assert.equal(f.storage.user.values.size,0);
+});
+
+test('linked tokens tick one shared actor while an independent snapshot retains its own clock instance', async () => {
+  const f=playingFixture(), actor=f.actors.get('a');
+  actor.data.combat={cardInitiative:true};
+  actor.data.effects=[{data:{active:true,remaining:3,phase:'end',owner:'self'}},
+    {data:{active:true,remaining:3,phase:'start',owner:'self'}},
+    {data:{active:true,remaining:3,phase:'start',owner:'source',sourceTokenId:'snapshot-a'}}];
+  const snapshot={...copy(actor),tokenId:'snapshot-a'};
+  f.encounter.combatants=[{id:'linked-a1',actor_id:'a',token_id:'linked-a1'},
+    {id:'linked-a2',actor_id:'a',token_id:'linked-a2',defeated:true},
+    {id:'snapshot-a',actor_id:'a',token_id:'snapshot-a'},
+    {id:'b',actor_id:'b',token_id:null}];
+  f.api.actors.sheet=async(id,context={})=>copy(context.tokenId==='snapshot-a'?snapshot:f.actors.get(id));
+  const save=f.api.actors.saveSheet;
+  f.api.actors.saveSheet=async(payload,options)=>{
+    if(payload.tokenId!=='snapshot-a')return save(payload,options);
+    if(payload.version!==snapshot.version||payload.sheetVersion!==snapshot.sheetVersion)throw fail('conflict');
+    snapshot.data=copy(payload.data);snapshot.version++;snapshot.sheetVersion++;f.count.actorSaves++;
+    return {version:snapshot.version,sheetVersion:snapshot.sheetVersion};
+  };
+  await f.controller().next();
+  assert.equal(f.encounter.turn,2);
+  assert.deepEqual(actor.data.effects.map(entry=>entry.data.remaining),[2,2,2]);
+  assert.deepEqual(snapshot.data.effects.map(entry=>entry.data.remaining),[3,2,2]);
+  assert.equal(f.count.actorSaves,2);
+  assert.equal(actor.data.combat.trackerOperations.length,1);
+  assert.equal(snapshot.data.combat.trackerOperations.length,1);
+});
+
+test('skipping to the next round resolves skipped turns and round clocks before waiting for the newly dealt first actor', async () => {
+  const f=playingFixture(),a=f.actors.get('a'),b=f.actors.get('b');
+  for(const actor of f.actors.values()){
+    actor.data.combat={cardInitiative:true};
+    actor.data.effects=[{data:{active:true,remaining:3,phase:'start',owner:'self'}},
+      {data:{active:true,remaining:3,phase:'round',owner:'self'}}];
+  }
+  b.data.status={vulnerable:true};
+  b.data.statusClocks={vulnerable:{remaining:1,phase:'end',owner:'self',awaitingStart:true}};
+  b.data.activePowers=[{active:true,durationRounds:1,remainingRounds:1}];
+  await f.controller().nextRound();
+  assert.equal(f.encounter.round,2);
+  assert.deepEqual(a.data.effects.map(entry=>entry.data.remaining),[3,2]);
+  assert.deepEqual(b.data.effects.map(entry=>entry.data.remaining),[2,2]);
+  assert.equal(b.data.status.vulnerable,false);assert.equal(b.data.activePowers[0].active,false);
+  assert.equal((await f.controller().refresh()).tracker.phase,'ready');
+  await f.controller().beginRound();
+  assert.deepEqual(a.data.effects.map(entry=>entry.data.remaining),[2,2]);
+  assert.deepEqual(b.data.effects.map(entry=>entry.data.remaining),[2,2]);
+});
+
+test('a lost frozen-plan checkpoint cannot issue the native transition until recovery has its durable plan', async () => {
+  const f=playingFixture(),set=f.storage.user.set;let lost=false;
+  f.actors.get('a').data.effects=[{data:{active:true,remaining:3,phase:'end',owner:'self'}}];
+  f.storage.user.set=async(key,value,options)=>{
+    const result=await set(key,value,options);
+    if(!lost&&value.clockPlans?.transition){lost=true;throw fail('unavailable');}return result;
+  };
+  await assert.rejects(f.controller().next(),{code:'unavailable'});
+  assert.equal(f.count.nextTurn,0);assert.equal(f.actors.get('a').data.effects[0].data.remaining,3);
+  await f.controller().next();
+  assert.equal(f.count.nextTurn,1);assert.equal(f.actors.get('a').data.effects[0].data.remaining,2);
+});
+
+test('an accepted legacy transition without a browser duration plan blocks instead of guessing or ticking again', async () => {
+  const f=playingFixture(),next=f.api.combat.nextTurn;let lost=false;
+  f.actors.get('a').data.effects=[{data:{active:true,remaining:3,phase:'end',owner:'self'}}];
+  f.api.combat.nextTurn=async(...args)=>{const result=await next(...args);if(!lost){lost=true;throw fail('unavailable');}return result;};
+  await assert.rejects(f.controller().next(),{code:'unavailable'});
+  // Reproduce the old durable journal shape after its server had resolved the
+  // command: there is a native receipt, but no pre-command browser clock plan.
+  for(const [key,record]of f.storage.user.values)if(key.includes('.operation.'))delete record.value.clockPlans;
+  f.actors.get('a').data.effects[0].data.remaining=2;
+  await assert.rejects(f.controller().next(),{code:'clock-plan-missing'});
+  assert.equal(f.count.nextTurn,1);assert.equal(f.actors.get('a').data.effects[0].data.remaining,2);
+  assert.equal((await f.controller().refresh()).tracker.operation.kind,'transition-nextTurn');
 });

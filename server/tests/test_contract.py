@@ -82,7 +82,7 @@ class NativeContractTests(TestCase):
         effects.advance(self.encounter, 'end', self.encounter.combatants[0], ticked=set())
         self.actor.refresh_from_db(); self.assertEqual(self.actor.data, before)
 
-    def test_one_system_archive_installs_browser_and_server_without_extra_requirements(self):
+    def test_current_archive_installs_browser_without_historical_server_source(self):
         from gravewright.modules.packages import ModulePackages
         source = Path(__file__).resolve().parents[2]
         sys.path.insert(0, str(source / 'scripts'))
@@ -94,9 +94,8 @@ class NativeContractTests(TestCase):
                 '.git', 'dist', 'node_modules', '__pycache__', '*.pyc', '.env*'))
             result = build(fixture_source)
             with zipfile.ZipFile(result['archive']) as archive:
-                self.assertTrue({'manifest.json', 'main.js', 'locales.json',
-                    'gravewright_swade/__init__.py', 'gravewright_swade/apps.py',
-                    'gravewright_swade/combat.py'} <= set(archive.namelist()))
+                self.assertTrue({'manifest.json', 'main.js', 'locales.json'} <= set(archive.namelist()))
+                self.assertFalse(any(name.endswith(('.py', '.pyc', '.pyd')) for name in archive.namelist()))
                 self.assertFalse(any(name.startswith(('scripts/', 'tests/', 'server/'))
                                      for name in archive.namelist()))
                 notice = archive.read('NOTICE.md').decode('utf-8')
@@ -115,20 +114,17 @@ class NativeContractTests(TestCase):
             installed = store.install_local(Path(result['archive']).read_bytes(), expected_type='system')
         self.assertEqual(installed['id'], SYSTEM_ID)
         self.assertEqual(installed['name'], 'Savage Worlds Compatibility Package for Gravewright')
-        self.assertEqual(installed['django']['apps'], ['gravewright_swade.apps.SwadeConfig'])
+        self.assertNotIn('django', installed)
         self.assertEqual(installed['entry'], 'main.js')
         self.assertIn('system', installed)
-        self.assertNotIn('requirements', installed['django'])
+        self.assertFalse(installed['system']['combat']['requiresProvider'])
 
-    def test_clock_provider_is_loaded_from_the_installed_system_zip(self):
+    def test_historical_provider_is_explicit_source_not_current_system_activation(self):
         import gravewright_swade
         from django.conf import settings
         from gravewright.modules.packages import package_type
         from config.marketplace_apps import selections
-        module_root = Path(settings.GRAVEWRIGHT_MODULES_ROOT)
-        self.assertTrue(Path(gravewright_swade.__file__).resolve().is_relative_to(module_root))
-        self.assertEqual(package_type({'entry': 'main.js', 'system': {},
-                        'django': {'apps': ['gravewright_swade.apps.SwadeConfig']}}), 'system')
-        active = selections(module_root)
-        self.assertEqual(set(active), {SYSTEM_ID})
-        self.assertEqual(active[SYSTEM_ID]['version'], '0.1.1')
+        historical = Path(__file__).resolve().parents[1]
+        self.assertTrue(Path(gravewright_swade.__file__).resolve().is_relative_to(historical))
+        self.assertEqual(package_type({'entry': 'main.js', 'system': {}}), 'system')
+        self.assertEqual(selections(settings.GRAVEWRIGHT_MODULES_ROOT), {})

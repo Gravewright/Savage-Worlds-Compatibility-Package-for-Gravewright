@@ -1,4 +1,4 @@
-"""Use native contracts with a memory database and isolated temporary storage."""
+"""Optional historical provider checks; this source is not current ZIP runtime."""
 import os
 from pathlib import Path
 import sys
@@ -13,7 +13,7 @@ def main():
     if not (host / 'manage.py').is_file():
         raise RuntimeError('Set GRAVEWRIGHT_TEST_HOST_ROOT to a Gravewright checkout.')
     source = server.parent
-    sys.path[:0] = [str(host), str(tests), str(source / 'tests')]
+    sys.path[:0] = [str(host), str(tests), str(server)]
     with tempfile.TemporaryDirectory(prefix='swade-server-contract-') as directory:
         isolated = Path(directory)
         # Process-local settings only: no local .env is read or changed.
@@ -23,17 +23,10 @@ def main():
             'GRAVEWRIGHT_MODULES_ROOT': str(isolated / 'modules'),
             'GRAVEWRIGHT_CONTENT_ROOT': str(isolated / 'content'),
             'GRAVEWRIGHT_MARKETPLACE_URL': '', 'GRAVEWRIGHT_MARKETPLACE_KEYS_FILE': '',
-            'GRAVEWRIGHT_REDIS_URL': '', 'GRAVEWRIGHT_SERVER_APP_PATHS': '',
-            'GRAVEWRIGHT_SERVER_APPS': '', 'PYTHON_DOTENV_DISABLED': '1',
+            'GRAVEWRIGHT_REDIS_URL': '', 'GRAVEWRIGHT_SERVER_APP_PATHS': str(server),
+            'GRAVEWRIGHT_SERVER_APPS': 'gravewright_swade.apps.SwadeConfig', 'PYTHON_DOTENV_DISABLED': '1',
             'GRAVEWRIGHT_DJANGO_REGISTRY': str(isolated / 'modules' / 'server-apps.json'),
         })
-        import json
-        version = json.loads((source / 'manifest.json').read_text(encoding='utf-8'))['version']
-        archive = source / 'dist' / f'gravewright-savage-worlds-{version}.zip'
-        if not archive.is_file():
-            raise RuntimeError('Build the unified system ZIP with python scripts/build.py first.')
-        from package_fixture import prepare_installed_system
-        prepare_installed_system(host, archive)
         import django
         with patch('config.environment.load_environment', lambda *args, **kwargs: None):
             django.setup()
@@ -47,7 +40,7 @@ def main():
         assert settings.DATABASES['default']['TEST']['NAME'] == ':memory:'
         assert Path(settings.MEDIA_ROOT).is_relative_to(isolated)
         assert Path(settings.GRAVEWRIGHT_MODULES_ROOT).is_relative_to(isolated)
-        print('Installed system ZIP; isolated database: :memory:; TEST database: :memory:; temporary media/modules; .env loading disabled')
+        print('Historical source provider only; not current system runtime; memory databases; temporary media/modules; .env disabled')
         return DiscoverRunner(verbosity=2).run_tests(['test_contract'])
 
 

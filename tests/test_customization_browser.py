@@ -5,6 +5,7 @@ Only this package is served; no host data directory or environment file is expos
 """
 
 import base64
+import os
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -16,7 +17,7 @@ from playwright.sync_api import sync_playwright
 PIXEL = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg=="
 )
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(os.environ.get('GRAVEWRIGHT_TEST_HOST_ROOT', Path(__file__).resolve().parents[3])).resolve()
 NATIVE_FILES = {
     "/static/gravewright_table/modal.js": ROOT / "gravewright/table/static/gravewright_table/modal.js",
     "/static/gravewright_web/escape.js": ROOT / "gravewright/web/static/gravewright_web/escape.js",
@@ -83,7 +84,8 @@ def main():
               async function idle(){for(let index=0;index<100;index++){if(!document.querySelector('.gws-customization')||document.querySelector('.gws-customization').getAttribute('aria-busy')==='false')return;await new Promise(resolve=>setTimeout(resolve,5));}throw Error('Customization stayed busy');}
               async function remote(label){const current=rows.get(SETTINGS_KEY);rows.set(SETTINGS_KEY,{value:{...normalizeSettings(current?.value),currency:{enabled:true,label}},revision:(current?.revision??0)+1});await system.settings.refresh();}
               function language(locale){words=catalogs[locale];for(const callback of [...languageListeners])callback();}
-              await setup();window.harness={open,setup,idle,remote,language,counts,words,rows,settings:()=>system.settings,key:SETTINGS_KEY};await open();
+              function compatibility(state){system.compatibility={current:{state,active:state==='absent'?false:null,installed:[],isOwner:true},subscribe:()=>()=>{},async refresh(){if(state==='unknown')throw Object.assign(Error('unavailable'),{code:'legacy-status-unavailable'});return this.current;}};}
+              await setup();window.harness={open,setup,idle,remote,language,compatibility,counts,words,rows,settings:()=>system.settings,key:SETTINGS_KEY};await open();
             }""")
             page.wait_for_function("[...document.querySelectorAll('.gws-deck-cover')].every(image=>image.naturalWidth>0)")
             assert page.locator(".gws-deck-option").count() == 3
@@ -163,11 +165,31 @@ def main():
             assert page.locator(".gws-customization").evaluate("element=>element.scrollWidth<=element.clientWidth")
             page.keyboard.press("Escape")
             page.wait_for_selector(".gws-customization", state="detached")
+            # Fresh installations have no migration control. A failed status
+            # read still permits opening the native recovery modal.
+            page.evaluate("harness.setup(true)")
+            page.evaluate("harness.compatibility('absent');harness.open()")
+            page.get_by_role("tab", name=words["permission.about"], exact=True).click()
+            page.evaluate("harness.idle()")
+            assert page.locator('[data-gws-legacy-migration]').count() == 0
+            page.keyboard.press("Escape")
+            page.wait_for_selector(".gws-customization", state="detached")
+            page.evaluate("harness.compatibility('unknown');harness.open()")
+            page.get_by_role("tab", name=words["permission.about"], exact=True).click()
+            page.evaluate("harness.idle()")
+            page.locator('[data-gws-legacy-migration]').get_by_role('button', name=words['legacy.title'], exact=True).click()
+            page.locator('.gws-legacy-migration').wait_for(state='visible')
+            assert words['legacy.unknown'] in page.locator('.gws-legacy-migration').inner_text()
+            page.keyboard.press('Escape')
+            page.wait_for_selector('.gws-legacy-migration', state='detached')
+            page.keyboard.press('Escape')
+            page.wait_for_selector('.gws-customization', state='detached')
             assert page.locator("dialog").count() == 0
             assert not errors, errors
             print({"themes": 3, "previewFaces": 54, "draftPreserved": True, "CASConflict": True,
                    "focusedSelectionPreserved": True, "escapeRestoresFocus": True, "readonly": True,
-                   "mobileNoOverflow": True, "liveLocaleDraftPreservation": True, "noDialogTag": True, "pageErrors": errors})
+                   "mobileNoOverflow": True, "liveLocaleDraftPreservation": True, "freshInstallNoMigration": True,
+                   "unavailableLegacyRecovery": True, "noDialogTag": True, "pageErrors": errors})
             browser.close()
     finally:
         server.shutdown()

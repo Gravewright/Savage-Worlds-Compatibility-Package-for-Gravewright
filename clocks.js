@@ -1,4 +1,4 @@
-/** Package-owned clocks mirrored by the isolated server combat provider. */
+/** Package-owned clocks persisted through the native sheet API. */
 import {cloneData} from './model.js';
 
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -63,3 +63,28 @@ export function advanceClocks(value, event) {
 
 /** Use after the card tracker has selected the actual first actor for a round. */
 export function beginTurn(sheet, event) {return advanceClocks(sheet, {...event, phase: 'start'}).sheet;}
+
+/** Freeze the exact forward-turn phases before issuing a native combat command.
+ * Backward navigation and manual selection never undo or repeat resolved clocks.
+ */
+export function combatClockPhases(state, method) {
+  if (!['nextTurn', 'nextRound'].includes(method) || !state?.active || !state.combatants?.length) return [];
+  const entries = state.combatants.slice(0, 64), previous = entries[state.turn];
+  if (!previous) return [];
+  let next = state.turn, boundary = method === 'nextRound';
+  const skipped = [];
+  if (method === 'nextRound') {skipped.push(...entries.slice(state.turn + 1)); next = 0;}
+  else {
+    if (entries.every(entry => entry.defeated)) return [];
+    for (let count = 0; count < entries.length; count++) {
+      next++;
+      if (next >= entries.length) {next = 0; boundary = true;}
+      if (!entries[next].defeated) break;
+      skipped.push(entries[next]);
+    }
+  }
+  const phase = (name, entry, roundBoundary = false) => ({phase: name, entry, roundBoundary});
+  return [phase('end', previous, boundary),
+    ...skipped.flatMap(entry => [phase('start', entry), phase('end', entry)]),
+    phase('start', entries[next], boundary)];
+}
