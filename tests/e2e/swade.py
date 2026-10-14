@@ -13,12 +13,15 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import secrets
 import subprocess
 import sys
+import tempfile
 import time
 from urllib.request import ProxyHandler, build_opener
+from zipfile import ZipFile
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -40,8 +43,18 @@ def start_fixture(root: Path, output: Path, archive: Path, port: int, *, with_ca
                   translator_zip: Path | None = None):
     seed_path = output / "seed.json"
     log = (output / "server.log").open("w", encoding="utf-8")
+    fixture = output / "fixture"
+    if os.name == 'nt':
+        # Deep host checkouts can push extracted package assets past Windows'
+        # ordinary 260-character file API limit. Keep review reports where the
+        # caller requested them, but select a short isolated data directory.
+        with ZipFile(archive) as package:
+            manifest = json.loads(package.read('manifest.json'))
+            package_root = fixture.resolve() / 'modules/packages' / manifest['id'] / manifest['version'] / fingerprint(archive)
+            if any(len(str(package_root / name)) >= 260 for name in package.namelist()):
+                fixture = Path(tempfile.gettempdir()) / f'gw-swade-{secrets.token_hex(8)}'
     command = [sys.executable, "-X", "utf8", str(Path(__file__).with_name("review_server.py")),
-        "--host-root", str(root), "--archive", str(archive), "--fixture", str(output / "fixture"),
+        "--host-root", str(root), "--archive", str(archive), "--fixture", str(fixture),
         "--seed", str(seed_path), "--port", str(port)]
     if with_card_deck:
         command.append('--with-card-deck')
