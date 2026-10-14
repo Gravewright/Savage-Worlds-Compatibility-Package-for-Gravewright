@@ -1,0 +1,999 @@
+{
+  "schemaVersion": 1,
+  "dimensions": [
+    600,
+    900
+  ],
+  "themes": [
+    {
+      "id": "ivory",
+      "count": 54,
+      "cards": [
+        {
+          "name": "A♠",
+          "file": "spades-a.webp",
+          "pips": 1,
+          "bytes": 27724
+        },
+        {
+          "name": "K♠",
+          "file": "spades-k.webp",
+          "pips": 0,
+          "bytes": 120308
+        },
+        {
+          "name": "Q♠",
+          "file": "spades-q.webp",
+          "pips": 0,
+          "bytes": 101936
+        },
+        {
+          "name": "J♠",
+          "file": "spades-j.webp",
+          "pips": 0,
+          "bytes": 116794
+        },
+        {
+          "name": "10♠",
+          "file": "spades-10.webp",
+          "pips": 10,
+          "bytes": 20800
+        },
+        {
+          "name": "9♠",
+          "file": "spades-9.webp",
+          "pips": 9,
+          "bytes": 19672
+        },
+        {
+          "name": "8♠",
+          "file": "spades-8.webp",
+          "pips": 8,
+          "bytes": 19304
+        },
+        {
+          "name": "7♠",
+          "file": "spades-7.webp",
+          "pips": 7,
+          "bytes": 17154
+        },
+        {
+          "name": "6♠",
+          "file": "spades-6.webp",
+          "pips": 6,
+          "bytes": 17150
+        },
+        {
+          "name": "5♠",
+          "file": "spades-5.webp",
+          "pips": 5,
+          "bytes": 15086
+        },
+        {
+          "name": "4♠",
+          "file": "spades-4.webp",
+          "pips": 4,
+          "bytes": 14452
+        },
+        {
+          "name": "3♠",
+          "file": "spades-3.webp",
+          "pips": 3,
+          "bytes": 13532
+        },
+        {
+          "name": "2♠",
+          "file": "spades-2.webp",
+          "pips": 2,
+          "bytes": 11844
+        },
+        {
+          "name": "A♥",
+          "file": "hearts-a.webp",
+          "pips": 1,
+          "bytes": 26484
+        },
+        {
+          "name": "K♥",
+          "file": "hearts-k.webp",
+          "pips": 0,
+          "bytes": 118502
+        },
+        {
+          "name": "Q♥",
+          "file": "hearts-q.webp",
+          "pips": 0,
+          "bytes": 101324
+        },
+        {
+          "name": "J♥",
+          "file": "hearts-j.webp",
+          "pips": 0,
+          "bytes": 114872
+        },
+        {
+          "name": "10♥",
+          "file": "hearts-10.webp",
+          "pips": 10,
+          "bytes": 21304
+        },
+        {
+          "name": "9♥",
+          "file": "hearts-9.webp",
+          "pips": 9,
+          "bytes": 20298
+        },
+        {
+          "name": "8♥",
+          "file": "hearts-8.webp",
+          "pips": 8,
+          "bytes": 19922
+        },
+        {
+          "name": "7♥",
+          "file": "hearts-7.webp",
+          "pips": 7,
+          "bytes": 17542
+        },
+        {
+          "name": "6♥",
+          "file": "hearts-6.webp",
+          "pips": 6,
+          "bytes": 17660
+        },
+        {
+          "name": "5♥",
+          "file": "hearts-5.webp",
+          "pips": 5,
+          "bytes": 16522
+        },
+        {
+          "name": "4♥",
+          "file": "hearts-4.webp",
+          "pips": 4,
+          "bytes": 15016
+        },
+        {
+          "name": "3♥",
+          "file": "hearts-3.webp",
+          "pips": 3,
+          "bytes": 14724
+        },
+        {
+          "name": "2♥",
+          "file": "hearts-2.webp",
+          "pips": 2,
+          "bytes": 13140
+        },
+        {
+          "name": "A♦",
+          "file": "diamonds-a.webp",
+          "pips": 1,
+          "bytes": 25208
+        },
+        {
+          "name": "K♦",
+          "file": "diamonds-k.webp",
+          "pips": 0,
+          "bytes": 118254
+        },
+        {
+          "name": "Q♦",
+          "file": "diamonds-q.webp",
+          "pips": 0,
+          "bytes": 101096
+        },
+        {
+          "name": "J♦",
+          "file": "diamonds-j.webp",
+          "pips": 0,
+          "bytes": 114668
+        },
+        {
+          "name": "10♦",
+          "file": "diamonds-10.webp",
+          "pips": 10,
+          "bytes": 20210
+        },
+        {
+          "name": "9♦",
+          "file": "diamonds-9.webp",
+          "pips": 9,
+          "bytes": 19264
+        },
+        {
+          "name": "8♦",
+          "file": "diamonds-8.webp",
+          "pips": 8,
+          "bytes": 18888
+        },
+        {
+          "name": "7♦",
+          "file": "diamonds-7.webp",
+          "pips": 7,
+          "bytes": 16742
+        },
+        {
+          "name": "6♦",
+          "file": "diamonds-6.webp",
+          "pips": 6,
+          "bytes": 16854
+        },
+        {
+          "name": "5♦",
+          "file": "diamonds-5.webp",
+          "pips": 5,
+          "bytes": 15738
+        },
+        {
+          "name": "4♦",
+          "file": "diamonds-4.webp",
+          "pips": 4,
+          "bytes": 14332
+        },
+        {
+          "name": "3♦",
+          "file": "diamonds-3.webp",
+          "pips": 3,
+          "bytes": 14512
+        },
+        {
+          "name": "2♦",
+          "file": "diamonds-2.webp",
+          "pips": 2,
+          "bytes": 12814
+        },
+        {
+          "name": "A♣",
+          "file": "clubs-a.webp",
+          "pips": 1,
+          "bytes": 28816
+        },
+        {
+          "name": "K♣",
+          "file": "clubs-k.webp",
+          "pips": 0,
+          "bytes": 120528
+        },
+        {
+          "name": "Q♣",
+          "file": "clubs-q.webp",
+          "pips": 0,
+          "bytes": 102114
+        },
+        {
+          "name": "J♣",
+          "file": "clubs-j.webp",
+          "pips": 0,
+          "bytes": 117082
+        },
+        {
+          "name": "10♣",
+          "file": "clubs-10.webp",
+          "pips": 10,
+          "bytes": 22898
+        },
+        {
+          "name": "9♣",
+          "file": "clubs-9.webp",
+          "pips": 9,
+          "bytes": 21450
+        },
+        {
+          "name": "8♣",
+          "file": "clubs-8.webp",
+          "pips": 8,
+          "bytes": 20814
+        },
+        {
+          "name": "7♣",
+          "file": "clubs-7.webp",
+          "pips": 7,
+          "bytes": 18478
+        },
+        {
+          "name": "6♣",
+          "file": "clubs-6.webp",
+          "pips": 6,
+          "bytes": 18226
+        },
+        {
+          "name": "5♣",
+          "file": "clubs-5.webp",
+          "pips": 5,
+          "bytes": 16926
+        },
+        {
+          "name": "4♣",
+          "file": "clubs-4.webp",
+          "pips": 4,
+          "bytes": 15256
+        },
+        {
+          "name": "3♣",
+          "file": "clubs-3.webp",
+          "pips": 3,
+          "bytes": 15094
+        },
+        {
+          "name": "2♣",
+          "file": "clubs-2.webp",
+          "pips": 2,
+          "bytes": 12298
+        },
+        {
+          "name": "★ 1",
+          "file": "joker-1.webp",
+          "pips": 0,
+          "bytes": 112622
+        },
+        {
+          "name": "★ 2",
+          "file": "joker-2.webp",
+          "pips": 0,
+          "bytes": 101982
+        }
+      ]
+    },
+    {
+      "id": "gravewright",
+      "count": 54,
+      "cards": [
+        {
+          "name": "A♠",
+          "file": "spades-a.webp",
+          "pips": 1,
+          "bytes": 24208
+        },
+        {
+          "name": "K♠",
+          "file": "spades-k.webp",
+          "pips": 0,
+          "bytes": 97682
+        },
+        {
+          "name": "Q♠",
+          "file": "spades-q.webp",
+          "pips": 0,
+          "bytes": 94000
+        },
+        {
+          "name": "J♠",
+          "file": "spades-j.webp",
+          "pips": 0,
+          "bytes": 91760
+        },
+        {
+          "name": "10♠",
+          "file": "spades-10.webp",
+          "pips": 10,
+          "bytes": 23112
+        },
+        {
+          "name": "9♠",
+          "file": "spades-9.webp",
+          "pips": 9,
+          "bytes": 21704
+        },
+        {
+          "name": "8♠",
+          "file": "spades-8.webp",
+          "pips": 8,
+          "bytes": 21030
+        },
+        {
+          "name": "7♠",
+          "file": "spades-7.webp",
+          "pips": 7,
+          "bytes": 18496
+        },
+        {
+          "name": "6♠",
+          "file": "spades-6.webp",
+          "pips": 6,
+          "bytes": 18364
+        },
+        {
+          "name": "5♠",
+          "file": "spades-5.webp",
+          "pips": 5,
+          "bytes": 17022
+        },
+        {
+          "name": "4♠",
+          "file": "spades-4.webp",
+          "pips": 4,
+          "bytes": 14408
+        },
+        {
+          "name": "3♠",
+          "file": "spades-3.webp",
+          "pips": 3,
+          "bytes": 15068
+        },
+        {
+          "name": "2♠",
+          "file": "spades-2.webp",
+          "pips": 2,
+          "bytes": 13132
+        },
+        {
+          "name": "A♥",
+          "file": "hearts-a.webp",
+          "pips": 1,
+          "bytes": 22206
+        },
+        {
+          "name": "K♥",
+          "file": "hearts-k.webp",
+          "pips": 0,
+          "bytes": 94750
+        },
+        {
+          "name": "Q♥",
+          "file": "hearts-q.webp",
+          "pips": 0,
+          "bytes": 93780
+        },
+        {
+          "name": "J♥",
+          "file": "hearts-j.webp",
+          "pips": 0,
+          "bytes": 91720
+        },
+        {
+          "name": "10♥",
+          "file": "hearts-10.webp",
+          "pips": 10,
+          "bytes": 20568
+        },
+        {
+          "name": "9♥",
+          "file": "hearts-9.webp",
+          "pips": 9,
+          "bytes": 19360
+        },
+        {
+          "name": "8♥",
+          "file": "hearts-8.webp",
+          "pips": 8,
+          "bytes": 18786
+        },
+        {
+          "name": "7♥",
+          "file": "hearts-7.webp",
+          "pips": 7,
+          "bytes": 17296
+        },
+        {
+          "name": "6♥",
+          "file": "hearts-6.webp",
+          "pips": 6,
+          "bytes": 17280
+        },
+        {
+          "name": "5♥",
+          "file": "hearts-5.webp",
+          "pips": 5,
+          "bytes": 16080
+        },
+        {
+          "name": "4♥",
+          "file": "hearts-4.webp",
+          "pips": 4,
+          "bytes": 14544
+        },
+        {
+          "name": "3♥",
+          "file": "hearts-3.webp",
+          "pips": 3,
+          "bytes": 14522
+        },
+        {
+          "name": "2♥",
+          "file": "hearts-2.webp",
+          "pips": 2,
+          "bytes": 12746
+        },
+        {
+          "name": "A♦",
+          "file": "diamonds-a.webp",
+          "pips": 1,
+          "bytes": 21354
+        },
+        {
+          "name": "K♦",
+          "file": "diamonds-k.webp",
+          "pips": 0,
+          "bytes": 96030
+        },
+        {
+          "name": "Q♦",
+          "file": "diamonds-q.webp",
+          "pips": 0,
+          "bytes": 93556
+        },
+        {
+          "name": "J♦",
+          "file": "diamonds-j.webp",
+          "pips": 0,
+          "bytes": 91364
+        },
+        {
+          "name": "10♦",
+          "file": "diamonds-10.webp",
+          "pips": 10,
+          "bytes": 19174
+        },
+        {
+          "name": "9♦",
+          "file": "diamonds-9.webp",
+          "pips": 9,
+          "bytes": 19138
+        },
+        {
+          "name": "8♦",
+          "file": "diamonds-8.webp",
+          "pips": 8,
+          "bytes": 18788
+        },
+        {
+          "name": "7♦",
+          "file": "diamonds-7.webp",
+          "pips": 7,
+          "bytes": 16480
+        },
+        {
+          "name": "6♦",
+          "file": "diamonds-6.webp",
+          "pips": 6,
+          "bytes": 16574
+        },
+        {
+          "name": "5♦",
+          "file": "diamonds-5.webp",
+          "pips": 5,
+          "bytes": 15440
+        },
+        {
+          "name": "4♦",
+          "file": "diamonds-4.webp",
+          "pips": 4,
+          "bytes": 13928
+        },
+        {
+          "name": "3♦",
+          "file": "diamonds-3.webp",
+          "pips": 3,
+          "bytes": 14046
+        },
+        {
+          "name": "2♦",
+          "file": "diamonds-2.webp",
+          "pips": 2,
+          "bytes": 12274
+        },
+        {
+          "name": "A♣",
+          "file": "clubs-a.webp",
+          "pips": 1,
+          "bytes": 25198
+        },
+        {
+          "name": "K♣",
+          "file": "clubs-k.webp",
+          "pips": 0,
+          "bytes": 97988
+        },
+        {
+          "name": "Q♣",
+          "file": "clubs-q.webp",
+          "pips": 0,
+          "bytes": 94516
+        },
+        {
+          "name": "J♣",
+          "file": "clubs-j.webp",
+          "pips": 0,
+          "bytes": 92278
+        },
+        {
+          "name": "10♣",
+          "file": "clubs-10.webp",
+          "pips": 10,
+          "bytes": 25014
+        },
+        {
+          "name": "9♣",
+          "file": "clubs-9.webp",
+          "pips": 9,
+          "bytes": 23628
+        },
+        {
+          "name": "8♣",
+          "file": "clubs-8.webp",
+          "pips": 8,
+          "bytes": 22678
+        },
+        {
+          "name": "7♣",
+          "file": "clubs-7.webp",
+          "pips": 7,
+          "bytes": 20084
+        },
+        {
+          "name": "6♣",
+          "file": "clubs-6.webp",
+          "pips": 6,
+          "bytes": 19684
+        },
+        {
+          "name": "5♣",
+          "file": "clubs-5.webp",
+          "pips": 5,
+          "bytes": 18120
+        },
+        {
+          "name": "4♣",
+          "file": "clubs-4.webp",
+          "pips": 4,
+          "bytes": 16198
+        },
+        {
+          "name": "3♣",
+          "file": "clubs-3.webp",
+          "pips": 3,
+          "bytes": 15800
+        },
+        {
+          "name": "2♣",
+          "file": "clubs-2.webp",
+          "pips": 2,
+          "bytes": 12820
+        },
+        {
+          "name": "★ 1",
+          "file": "joker-1.webp",
+          "pips": 0,
+          "bytes": 73810
+        },
+        {
+          "name": "★ 2",
+          "file": "joker-2.webp",
+          "pips": 0,
+          "bytes": 66646
+        }
+      ]
+    },
+    {
+      "id": "adventure",
+      "count": 54,
+      "cards": [
+        {
+          "name": "A♠",
+          "file": "spades-a.webp",
+          "pips": 1,
+          "bytes": 34776
+        },
+        {
+          "name": "K♠",
+          "file": "spades-k.webp",
+          "pips": 0,
+          "bytes": 120800
+        },
+        {
+          "name": "Q♠",
+          "file": "spades-q.webp",
+          "pips": 0,
+          "bytes": 119046
+        },
+        {
+          "name": "J♠",
+          "file": "spades-j.webp",
+          "pips": 0,
+          "bytes": 131744
+        },
+        {
+          "name": "10♠",
+          "file": "spades-10.webp",
+          "pips": 10,
+          "bytes": 29360
+        },
+        {
+          "name": "9♠",
+          "file": "spades-9.webp",
+          "pips": 9,
+          "bytes": 27882
+        },
+        {
+          "name": "8♠",
+          "file": "spades-8.webp",
+          "pips": 8,
+          "bytes": 27236
+        },
+        {
+          "name": "7♠",
+          "file": "spades-7.webp",
+          "pips": 7,
+          "bytes": 25268
+        },
+        {
+          "name": "6♠",
+          "file": "spades-6.webp",
+          "pips": 6,
+          "bytes": 24972
+        },
+        {
+          "name": "5♠",
+          "file": "spades-5.webp",
+          "pips": 5,
+          "bytes": 24108
+        },
+        {
+          "name": "4♠",
+          "file": "spades-4.webp",
+          "pips": 4,
+          "bytes": 20956
+        },
+        {
+          "name": "3♠",
+          "file": "spades-3.webp",
+          "pips": 3,
+          "bytes": 22444
+        },
+        {
+          "name": "2♠",
+          "file": "spades-2.webp",
+          "pips": 2,
+          "bytes": 20768
+        },
+        {
+          "name": "A♥",
+          "file": "hearts-a.webp",
+          "pips": 1,
+          "bytes": 32112
+        },
+        {
+          "name": "K♥",
+          "file": "hearts-k.webp",
+          "pips": 0,
+          "bytes": 121502
+        },
+        {
+          "name": "Q♥",
+          "file": "hearts-q.webp",
+          "pips": 0,
+          "bytes": 118680
+        },
+        {
+          "name": "J♥",
+          "file": "hearts-j.webp",
+          "pips": 0,
+          "bytes": 131736
+        },
+        {
+          "name": "10♥",
+          "file": "hearts-10.webp",
+          "pips": 10,
+          "bytes": 29132
+        },
+        {
+          "name": "9♥",
+          "file": "hearts-9.webp",
+          "pips": 9,
+          "bytes": 27756
+        },
+        {
+          "name": "8♥",
+          "file": "hearts-8.webp",
+          "pips": 8,
+          "bytes": 27114
+        },
+        {
+          "name": "7♥",
+          "file": "hearts-7.webp",
+          "pips": 7,
+          "bytes": 25252
+        },
+        {
+          "name": "6♥",
+          "file": "hearts-6.webp",
+          "pips": 6,
+          "bytes": 25038
+        },
+        {
+          "name": "5♥",
+          "file": "hearts-5.webp",
+          "pips": 5,
+          "bytes": 24132
+        },
+        {
+          "name": "4♥",
+          "file": "hearts-4.webp",
+          "pips": 4,
+          "bytes": 22790
+        },
+        {
+          "name": "3♥",
+          "file": "hearts-3.webp",
+          "pips": 3,
+          "bytes": 22464
+        },
+        {
+          "name": "2♥",
+          "file": "hearts-2.webp",
+          "pips": 2,
+          "bytes": 20794
+        },
+        {
+          "name": "A♦",
+          "file": "diamonds-a.webp",
+          "pips": 1,
+          "bytes": 31060
+        },
+        {
+          "name": "K♦",
+          "file": "diamonds-k.webp",
+          "pips": 0,
+          "bytes": 121358
+        },
+        {
+          "name": "Q♦",
+          "file": "diamonds-q.webp",
+          "pips": 0,
+          "bytes": 118422
+        },
+        {
+          "name": "J♦",
+          "file": "diamonds-j.webp",
+          "pips": 0,
+          "bytes": 130790
+        },
+        {
+          "name": "10♦",
+          "file": "diamonds-10.webp",
+          "pips": 10,
+          "bytes": 28108
+        },
+        {
+          "name": "9♦",
+          "file": "diamonds-9.webp",
+          "pips": 9,
+          "bytes": 26856
+        },
+        {
+          "name": "8♦",
+          "file": "diamonds-8.webp",
+          "pips": 8,
+          "bytes": 26272
+        },
+        {
+          "name": "7♦",
+          "file": "diamonds-7.webp",
+          "pips": 7,
+          "bytes": 24562
+        },
+        {
+          "name": "6♦",
+          "file": "diamonds-6.webp",
+          "pips": 6,
+          "bytes": 24216
+        },
+        {
+          "name": "5♦",
+          "file": "diamonds-5.webp",
+          "pips": 5,
+          "bytes": 23648
+        },
+        {
+          "name": "4♦",
+          "file": "diamonds-4.webp",
+          "pips": 4,
+          "bytes": 22274
+        },
+        {
+          "name": "3♦",
+          "file": "diamonds-3.webp",
+          "pips": 3,
+          "bytes": 22340
+        },
+        {
+          "name": "2♦",
+          "file": "diamonds-2.webp",
+          "pips": 2,
+          "bytes": 20520
+        },
+        {
+          "name": "A♣",
+          "file": "clubs-a.webp",
+          "pips": 1,
+          "bytes": 35896
+        },
+        {
+          "name": "K♣",
+          "file": "clubs-k.webp",
+          "pips": 0,
+          "bytes": 122368
+        },
+        {
+          "name": "Q♣",
+          "file": "clubs-q.webp",
+          "pips": 0,
+          "bytes": 119338
+        },
+        {
+          "name": "J♣",
+          "file": "clubs-j.webp",
+          "pips": 0,
+          "bytes": 132122
+        },
+        {
+          "name": "10♣",
+          "file": "clubs-10.webp",
+          "pips": 10,
+          "bytes": 31424
+        },
+        {
+          "name": "9♣",
+          "file": "clubs-9.webp",
+          "pips": 9,
+          "bytes": 29798
+        },
+        {
+          "name": "8♣",
+          "file": "clubs-8.webp",
+          "pips": 8,
+          "bytes": 28780
+        },
+        {
+          "name": "7♣",
+          "file": "clubs-7.webp",
+          "pips": 7,
+          "bytes": 26790
+        },
+        {
+          "name": "6♣",
+          "file": "clubs-6.webp",
+          "pips": 6,
+          "bytes": 26228
+        },
+        {
+          "name": "5♣",
+          "file": "clubs-5.webp",
+          "pips": 5,
+          "bytes": 25022
+        },
+        {
+          "name": "4♣",
+          "file": "clubs-4.webp",
+          "pips": 4,
+          "bytes": 23410
+        },
+        {
+          "name": "3♣",
+          "file": "clubs-3.webp",
+          "pips": 3,
+          "bytes": 23156
+        },
+        {
+          "name": "2♣",
+          "file": "clubs-2.webp",
+          "pips": 2,
+          "bytes": 21318
+        },
+        {
+          "name": "★ 1",
+          "file": "joker-1.webp",
+          "pips": 0,
+          "bytes": 119254
+        },
+        {
+          "name": "★ 2",
+          "file": "joker-2.webp",
+          "pips": 0,
+          "bytes": 107526
+        }
+      ]
+    }
+  ]
+}

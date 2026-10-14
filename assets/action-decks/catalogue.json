@@ -1,0 +1,680 @@
+{
+  "schemaVersion": 1,
+  "themes": [
+    {
+      "id": "ivory",
+      "titleKey": "settings.deck.ivory.title",
+      "descriptionKey": "settings.deck.ivory.description",
+      "preview": "assets/action-decks/ivory/preview.webp",
+      "back": "assets/action-decks/ivory/back.webp",
+      "cards": [
+        {
+          "name": "A♠",
+          "front": "assets/action-decks/ivory/spades-a.webp"
+        },
+        {
+          "name": "K♠",
+          "front": "assets/action-decks/ivory/spades-k.webp"
+        },
+        {
+          "name": "Q♠",
+          "front": "assets/action-decks/ivory/spades-q.webp"
+        },
+        {
+          "name": "J♠",
+          "front": "assets/action-decks/ivory/spades-j.webp"
+        },
+        {
+          "name": "10♠",
+          "front": "assets/action-decks/ivory/spades-10.webp"
+        },
+        {
+          "name": "9♠",
+          "front": "assets/action-decks/ivory/spades-9.webp"
+        },
+        {
+          "name": "8♠",
+          "front": "assets/action-decks/ivory/spades-8.webp"
+        },
+        {
+          "name": "7♠",
+          "front": "assets/action-decks/ivory/spades-7.webp"
+        },
+        {
+          "name": "6♠",
+          "front": "assets/action-decks/ivory/spades-6.webp"
+        },
+        {
+          "name": "5♠",
+          "front": "assets/action-decks/ivory/spades-5.webp"
+        },
+        {
+          "name": "4♠",
+          "front": "assets/action-decks/ivory/spades-4.webp"
+        },
+        {
+          "name": "3♠",
+          "front": "assets/action-decks/ivory/spades-3.webp"
+        },
+        {
+          "name": "2♠",
+          "front": "assets/action-decks/ivory/spades-2.webp"
+        },
+        {
+          "name": "A♥",
+          "front": "assets/action-decks/ivory/hearts-a.webp"
+        },
+        {
+          "name": "K♥",
+          "front": "assets/action-decks/ivory/hearts-k.webp"
+        },
+        {
+          "name": "Q♥",
+          "front": "assets/action-decks/ivory/hearts-q.webp"
+        },
+        {
+          "name": "J♥",
+          "front": "assets/action-decks/ivory/hearts-j.webp"
+        },
+        {
+          "name": "10♥",
+          "front": "assets/action-decks/ivory/hearts-10.webp"
+        },
+        {
+          "name": "9♥",
+          "front": "assets/action-decks/ivory/hearts-9.webp"
+        },
+        {
+          "name": "8♥",
+          "front": "assets/action-decks/ivory/hearts-8.webp"
+        },
+        {
+          "name": "7♥",
+          "front": "assets/action-decks/ivory/hearts-7.webp"
+        },
+        {
+          "name": "6♥",
+          "front": "assets/action-decks/ivory/hearts-6.webp"
+        },
+        {
+          "name": "5♥",
+          "front": "assets/action-decks/ivory/hearts-5.webp"
+        },
+        {
+          "name": "4♥",
+          "front": "assets/action-decks/ivory/hearts-4.webp"
+        },
+        {
+          "name": "3♥",
+          "front": "assets/action-decks/ivory/hearts-3.webp"
+        },
+        {
+          "name": "2♥",
+          "front": "assets/action-decks/ivory/hearts-2.webp"
+        },
+        {
+          "name": "A♦",
+          "front": "assets/action-decks/ivory/diamonds-a.webp"
+        },
+        {
+          "name": "K♦",
+          "front": "assets/action-decks/ivory/diamonds-k.webp"
+        },
+        {
+          "name": "Q♦",
+          "front": "assets/action-decks/ivory/diamonds-q.webp"
+        },
+        {
+          "name": "J♦",
+          "front": "assets/action-decks/ivory/diamonds-j.webp"
+        },
+        {
+          "name": "10♦",
+          "front": "assets/action-decks/ivory/diamonds-10.webp"
+        },
+        {
+          "name": "9♦",
+          "front": "assets/action-decks/ivory/diamonds-9.webp"
+        },
+        {
+          "name": "8♦",
+          "front": "assets/action-decks/ivory/diamonds-8.webp"
+        },
+        {
+          "name": "7♦",
+          "front": "assets/action-decks/ivory/diamonds-7.webp"
+        },
+        {
+          "name": "6♦",
+          "front": "assets/action-decks/ivory/diamonds-6.webp"
+        },
+        {
+          "name": "5♦",
+          "front": "assets/action-decks/ivory/diamonds-5.webp"
+        },
+        {
+          "name": "4♦",
+          "front": "assets/action-decks/ivory/diamonds-4.webp"
+        },
+        {
+          "name": "3♦",
+          "front": "assets/action-decks/ivory/diamonds-3.webp"
+        },
+        {
+          "name": "2♦",
+          "front": "assets/action-decks/ivory/diamonds-2.webp"
+        },
+        {
+          "name": "A♣",
+          "front": "assets/action-decks/ivory/clubs-a.webp"
+        },
+        {
+          "name": "K♣",
+          "front": "assets/action-decks/ivory/clubs-k.webp"
+        },
+        {
+          "name": "Q♣",
+          "front": "assets/action-decks/ivory/clubs-q.webp"
+        },
+        {
+          "name": "J♣",
+          "front": "assets/action-decks/ivory/clubs-j.webp"
+        },
+        {
+          "name": "10♣",
+          "front": "assets/action-decks/ivory/clubs-10.webp"
+        },
+        {
+          "name": "9♣",
+          "front": "assets/action-decks/ivory/clubs-9.webp"
+        },
+        {
+          "name": "8♣",
+          "front": "assets/action-decks/ivory/clubs-8.webp"
+        },
+        {
+          "name": "7♣",
+          "front": "assets/action-decks/ivory/clubs-7.webp"
+        },
+        {
+          "name": "6♣",
+          "front": "assets/action-decks/ivory/clubs-6.webp"
+        },
+        {
+          "name": "5♣",
+          "front": "assets/action-decks/ivory/clubs-5.webp"
+        },
+        {
+          "name": "4♣",
+          "front": "assets/action-decks/ivory/clubs-4.webp"
+        },
+        {
+          "name": "3♣",
+          "front": "assets/action-decks/ivory/clubs-3.webp"
+        },
+        {
+          "name": "2♣",
+          "front": "assets/action-decks/ivory/clubs-2.webp"
+        },
+        {
+          "name": "★ 1",
+          "front": "assets/action-decks/ivory/joker-1.webp"
+        },
+        {
+          "name": "★ 2",
+          "front": "assets/action-decks/ivory/joker-2.webp"
+        }
+      ]
+    },
+    {
+      "id": "gravewright",
+      "titleKey": "settings.deck.gravewright.title",
+      "descriptionKey": "settings.deck.gravewright.description",
+      "preview": "assets/action-decks/gravewright/preview.webp",
+      "back": "assets/action-decks/gravewright/back.webp",
+      "cards": [
+        {
+          "name": "A♠",
+          "front": "assets/action-decks/gravewright/spades-a.webp"
+        },
+        {
+          "name": "K♠",
+          "front": "assets/action-decks/gravewright/spades-k.webp"
+        },
+        {
+          "name": "Q♠",
+          "front": "assets/action-decks/gravewright/spades-q.webp"
+        },
+        {
+          "name": "J♠",
+          "front": "assets/action-decks/gravewright/spades-j.webp"
+        },
+        {
+          "name": "10♠",
+          "front": "assets/action-decks/gravewright/spades-10.webp"
+        },
+        {
+          "name": "9♠",
+          "front": "assets/action-decks/gravewright/spades-9.webp"
+        },
+        {
+          "name": "8♠",
+          "front": "assets/action-decks/gravewright/spades-8.webp"
+        },
+        {
+          "name": "7♠",
+          "front": "assets/action-decks/gravewright/spades-7.webp"
+        },
+        {
+          "name": "6♠",
+          "front": "assets/action-decks/gravewright/spades-6.webp"
+        },
+        {
+          "name": "5♠",
+          "front": "assets/action-decks/gravewright/spades-5.webp"
+        },
+        {
+          "name": "4♠",
+          "front": "assets/action-decks/gravewright/spades-4.webp"
+        },
+        {
+          "name": "3♠",
+          "front": "assets/action-decks/gravewright/spades-3.webp"
+        },
+        {
+          "name": "2♠",
+          "front": "assets/action-decks/gravewright/spades-2.webp"
+        },
+        {
+          "name": "A♥",
+          "front": "assets/action-decks/gravewright/hearts-a.webp"
+        },
+        {
+          "name": "K♥",
+          "front": "assets/action-decks/gravewright/hearts-k.webp"
+        },
+        {
+          "name": "Q♥",
+          "front": "assets/action-decks/gravewright/hearts-q.webp"
+        },
+        {
+          "name": "J♥",
+          "front": "assets/action-decks/gravewright/hearts-j.webp"
+        },
+        {
+          "name": "10♥",
+          "front": "assets/action-decks/gravewright/hearts-10.webp"
+        },
+        {
+          "name": "9♥",
+          "front": "assets/action-decks/gravewright/hearts-9.webp"
+        },
+        {
+          "name": "8♥",
+          "front": "assets/action-decks/gravewright/hearts-8.webp"
+        },
+        {
+          "name": "7♥",
+          "front": "assets/action-decks/gravewright/hearts-7.webp"
+        },
+        {
+          "name": "6♥",
+          "front": "assets/action-decks/gravewright/hearts-6.webp"
+        },
+        {
+          "name": "5♥",
+          "front": "assets/action-decks/gravewright/hearts-5.webp"
+        },
+        {
+          "name": "4♥",
+          "front": "assets/action-decks/gravewright/hearts-4.webp"
+        },
+        {
+          "name": "3♥",
+          "front": "assets/action-decks/gravewright/hearts-3.webp"
+        },
+        {
+          "name": "2♥",
+          "front": "assets/action-decks/gravewright/hearts-2.webp"
+        },
+        {
+          "name": "A♦",
+          "front": "assets/action-decks/gravewright/diamonds-a.webp"
+        },
+        {
+          "name": "K♦",
+          "front": "assets/action-decks/gravewright/diamonds-k.webp"
+        },
+        {
+          "name": "Q♦",
+          "front": "assets/action-decks/gravewright/diamonds-q.webp"
+        },
+        {
+          "name": "J♦",
+          "front": "assets/action-decks/gravewright/diamonds-j.webp"
+        },
+        {
+          "name": "10♦",
+          "front": "assets/action-decks/gravewright/diamonds-10.webp"
+        },
+        {
+          "name": "9♦",
+          "front": "assets/action-decks/gravewright/diamonds-9.webp"
+        },
+        {
+          "name": "8♦",
+          "front": "assets/action-decks/gravewright/diamonds-8.webp"
+        },
+        {
+          "name": "7♦",
+          "front": "assets/action-decks/gravewright/diamonds-7.webp"
+        },
+        {
+          "name": "6♦",
+          "front": "assets/action-decks/gravewright/diamonds-6.webp"
+        },
+        {
+          "name": "5♦",
+          "front": "assets/action-decks/gravewright/diamonds-5.webp"
+        },
+        {
+          "name": "4♦",
+          "front": "assets/action-decks/gravewright/diamonds-4.webp"
+        },
+        {
+          "name": "3♦",
+          "front": "assets/action-decks/gravewright/diamonds-3.webp"
+        },
+        {
+          "name": "2♦",
+          "front": "assets/action-decks/gravewright/diamonds-2.webp"
+        },
+        {
+          "name": "A♣",
+          "front": "assets/action-decks/gravewright/clubs-a.webp"
+        },
+        {
+          "name": "K♣",
+          "front": "assets/action-decks/gravewright/clubs-k.webp"
+        },
+        {
+          "name": "Q♣",
+          "front": "assets/action-decks/gravewright/clubs-q.webp"
+        },
+        {
+          "name": "J♣",
+          "front": "assets/action-decks/gravewright/clubs-j.webp"
+        },
+        {
+          "name": "10♣",
+          "front": "assets/action-decks/gravewright/clubs-10.webp"
+        },
+        {
+          "name": "9♣",
+          "front": "assets/action-decks/gravewright/clubs-9.webp"
+        },
+        {
+          "name": "8♣",
+          "front": "assets/action-decks/gravewright/clubs-8.webp"
+        },
+        {
+          "name": "7♣",
+          "front": "assets/action-decks/gravewright/clubs-7.webp"
+        },
+        {
+          "name": "6♣",
+          "front": "assets/action-decks/gravewright/clubs-6.webp"
+        },
+        {
+          "name": "5♣",
+          "front": "assets/action-decks/gravewright/clubs-5.webp"
+        },
+        {
+          "name": "4♣",
+          "front": "assets/action-decks/gravewright/clubs-4.webp"
+        },
+        {
+          "name": "3♣",
+          "front": "assets/action-decks/gravewright/clubs-3.webp"
+        },
+        {
+          "name": "2♣",
+          "front": "assets/action-decks/gravewright/clubs-2.webp"
+        },
+        {
+          "name": "★ 1",
+          "front": "assets/action-decks/gravewright/joker-1.webp"
+        },
+        {
+          "name": "★ 2",
+          "front": "assets/action-decks/gravewright/joker-2.webp"
+        }
+      ]
+    },
+    {
+      "id": "adventure",
+      "titleKey": "settings.deck.adventure.title",
+      "descriptionKey": "settings.deck.adventure.description",
+      "preview": "assets/action-decks/adventure/preview.webp",
+      "back": "assets/action-decks/adventure/back.webp",
+      "cards": [
+        {
+          "name": "A♠",
+          "front": "assets/action-decks/adventure/spades-a.webp"
+        },
+        {
+          "name": "K♠",
+          "front": "assets/action-decks/adventure/spades-k.webp"
+        },
+        {
+          "name": "Q♠",
+          "front": "assets/action-decks/adventure/spades-q.webp"
+        },
+        {
+          "name": "J♠",
+          "front": "assets/action-decks/adventure/spades-j.webp"
+        },
+        {
+          "name": "10♠",
+          "front": "assets/action-decks/adventure/spades-10.webp"
+        },
+        {
+          "name": "9♠",
+          "front": "assets/action-decks/adventure/spades-9.webp"
+        },
+        {
+          "name": "8♠",
+          "front": "assets/action-decks/adventure/spades-8.webp"
+        },
+        {
+          "name": "7♠",
+          "front": "assets/action-decks/adventure/spades-7.webp"
+        },
+        {
+          "name": "6♠",
+          "front": "assets/action-decks/adventure/spades-6.webp"
+        },
+        {
+          "name": "5♠",
+          "front": "assets/action-decks/adventure/spades-5.webp"
+        },
+        {
+          "name": "4♠",
+          "front": "assets/action-decks/adventure/spades-4.webp"
+        },
+        {
+          "name": "3♠",
+          "front": "assets/action-decks/adventure/spades-3.webp"
+        },
+        {
+          "name": "2♠",
+          "front": "assets/action-decks/adventure/spades-2.webp"
+        },
+        {
+          "name": "A♥",
+          "front": "assets/action-decks/adventure/hearts-a.webp"
+        },
+        {
+          "name": "K♥",
+          "front": "assets/action-decks/adventure/hearts-k.webp"
+        },
+        {
+          "name": "Q♥",
+          "front": "assets/action-decks/adventure/hearts-q.webp"
+        },
+        {
+          "name": "J♥",
+          "front": "assets/action-decks/adventure/hearts-j.webp"
+        },
+        {
+          "name": "10♥",
+          "front": "assets/action-decks/adventure/hearts-10.webp"
+        },
+        {
+          "name": "9♥",
+          "front": "assets/action-decks/adventure/hearts-9.webp"
+        },
+        {
+          "name": "8♥",
+          "front": "assets/action-decks/adventure/hearts-8.webp"
+        },
+        {
+          "name": "7♥",
+          "front": "assets/action-decks/adventure/hearts-7.webp"
+        },
+        {
+          "name": "6♥",
+          "front": "assets/action-decks/adventure/hearts-6.webp"
+        },
+        {
+          "name": "5♥",
+          "front": "assets/action-decks/adventure/hearts-5.webp"
+        },
+        {
+          "name": "4♥",
+          "front": "assets/action-decks/adventure/hearts-4.webp"
+        },
+        {
+          "name": "3♥",
+          "front": "assets/action-decks/adventure/hearts-3.webp"
+        },
+        {
+          "name": "2♥",
+          "front": "assets/action-decks/adventure/hearts-2.webp"
+        },
+        {
+          "name": "A♦",
+          "front": "assets/action-decks/adventure/diamonds-a.webp"
+        },
+        {
+          "name": "K♦",
+          "front": "assets/action-decks/adventure/diamonds-k.webp"
+        },
+        {
+          "name": "Q♦",
+          "front": "assets/action-decks/adventure/diamonds-q.webp"
+        },
+        {
+          "name": "J♦",
+          "front": "assets/action-decks/adventure/diamonds-j.webp"
+        },
+        {
+          "name": "10♦",
+          "front": "assets/action-decks/adventure/diamonds-10.webp"
+        },
+        {
+          "name": "9♦",
+          "front": "assets/action-decks/adventure/diamonds-9.webp"
+        },
+        {
+          "name": "8♦",
+          "front": "assets/action-decks/adventure/diamonds-8.webp"
+        },
+        {
+          "name": "7♦",
+          "front": "assets/action-decks/adventure/diamonds-7.webp"
+        },
+        {
+          "name": "6♦",
+          "front": "assets/action-decks/adventure/diamonds-6.webp"
+        },
+        {
+          "name": "5♦",
+          "front": "assets/action-decks/adventure/diamonds-5.webp"
+        },
+        {
+          "name": "4♦",
+          "front": "assets/action-decks/adventure/diamonds-4.webp"
+        },
+        {
+          "name": "3♦",
+          "front": "assets/action-decks/adventure/diamonds-3.webp"
+        },
+        {
+          "name": "2♦",
+          "front": "assets/action-decks/adventure/diamonds-2.webp"
+        },
+        {
+          "name": "A♣",
+          "front": "assets/action-decks/adventure/clubs-a.webp"
+        },
+        {
+          "name": "K♣",
+          "front": "assets/action-decks/adventure/clubs-k.webp"
+        },
+        {
+          "name": "Q♣",
+          "front": "assets/action-decks/adventure/clubs-q.webp"
+        },
+        {
+          "name": "J♣",
+          "front": "assets/action-decks/adventure/clubs-j.webp"
+        },
+        {
+          "name": "10♣",
+          "front": "assets/action-decks/adventure/clubs-10.webp"
+        },
+        {
+          "name": "9♣",
+          "front": "assets/action-decks/adventure/clubs-9.webp"
+        },
+        {
+          "name": "8♣",
+          "front": "assets/action-decks/adventure/clubs-8.webp"
+        },
+        {
+          "name": "7♣",
+          "front": "assets/action-decks/adventure/clubs-7.webp"
+        },
+        {
+          "name": "6♣",
+          "front": "assets/action-decks/adventure/clubs-6.webp"
+        },
+        {
+          "name": "5♣",
+          "front": "assets/action-decks/adventure/clubs-5.webp"
+        },
+        {
+          "name": "4♣",
+          "front": "assets/action-decks/adventure/clubs-4.webp"
+        },
+        {
+          "name": "3♣",
+          "front": "assets/action-decks/adventure/clubs-3.webp"
+        },
+        {
+          "name": "2♣",
+          "front": "assets/action-decks/adventure/clubs-2.webp"
+        },
+        {
+          "name": "★ 1",
+          "front": "assets/action-decks/adventure/joker-1.webp"
+        },
+        {
+          "name": "★ 2",
+          "front": "assets/action-decks/adventure/joker-2.webp"
+        }
+      ]
+    }
+  ]
+}

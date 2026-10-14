@@ -1,0 +1,113 @@
+{
+  "id": "gravewright.savage-worlds",
+  "name": "Savage Worlds Compatibility Package for Gravewright",
+  "version": "0.1.0",
+  "description": "Original editable SWADE sheets and item templates with package-owned mechanical automation. Requires Gravewright VTT 0.2.3+. No game content or compendiums. Turn clocks require the matching Savage Worlds Rules server extension.",
+  "author": "Gravewright contributors",
+  "license": "MIT",
+  "sdk": {
+    "requires": ">=1.0.0 <2.0.0",
+    "tested": "1.0.0"
+  },
+  "entry": "main.js",
+  "system": {
+    "actorTypes": [
+      {
+        "id": "character",
+        "label": "Character",
+        "labelKey": "actorType.character"
+      },
+      {
+        "id": "npc",
+        "label": "Non-player character",
+        "labelKey": "actorType.npc"
+      }
+    ],
+    "itemTypes": [
+      {
+        "id": "weapon",
+        "label": "Weapon",
+        "labelKey": "item.type.weapon",
+        "icon": "Sword"
+      },
+      {
+        "id": "armor",
+        "label": "Armor",
+        "labelKey": "item.type.armor",
+        "icon": "ShieldCheck"
+      },
+      {
+        "id": "equipment",
+        "label": "Equipment",
+        "labelKey": "item.type.equipment",
+        "icon": "Backpack"
+      },
+      {
+        "id": "consumable",
+        "label": "Consumable",
+        "labelKey": "item.type.consumable",
+        "icon": "Backpack"
+      },
+      {
+        "id": "skill",
+        "label": "Skill",
+        "labelKey": "item.type.skill",
+        "icon": "Sparkle"
+      },
+      {
+        "id": "edge",
+        "label": "Edge",
+        "labelKey": "item.type.edge",
+        "icon": "Sparkle"
+      },
+      {
+        "id": "hindrance",
+        "label": "Hindrance",
+        "labelKey": "item.type.hindrance",
+        "icon": "User"
+      },
+      {
+        "id": "ancestry",
+        "label": "Ancestry",
+        "labelKey": "item.type.ancestry",
+        "icon": "User"
+      },
+      {
+        "id": "racial-feature",
+        "label": "Racial feature",
+        "labelKey": "item.type.racial-feature",
+        "icon": "User"
+      },
+      {
+        "id": "power",
+        "label": "Power",
+        "labelKey": "item.type.power",
+        "icon": "Scroll"
+      },
+      {
+        "id": "effect",
+        "label": "Effect",
+        "labelKey": "item.type.effect",
+        "icon": "Sparkle"
+      },
+      {
+        "id": "vehicle",
+        "label": "Vehicle",
+        "labelKey": "item.type.vehicle",
+        "icon": "Backpack"
+      },
+      {
+        "id": "arcane-device",
+        "label": "Arcane device",
+        "labelKey": "item.type.arcane-device",
+        "icon": "Scroll"
+      }
+    ],
+    "combat": {
+      "manualInput": "number",
+      "showRoll": false,
+      "requiresProvider": true,
+      "formula": "0"
+    }
+  }
+}
