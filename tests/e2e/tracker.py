@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import secrets
 import subprocess
@@ -114,7 +115,8 @@ def reopen_and_reload_paused(gm, player_tracker, seed, expected):
 def smoke(seed, output):
     errors, dialogs, calls = [], [], []
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch()
+        browser = playwright.chromium.launch(env={**os.environ,
+            'CHROME_LOG_FILE': str(output / 'chromium.log')})
         pages = {}
         for role in ('gm', 'editor'):
             context = browser.new_context(viewport={'width': 1440, 'height': 1050}, locale='pt-BR')
@@ -128,6 +130,27 @@ def smoke(seed, output):
             page.wait_for_function('!!window.gravewrightMaps?.current && !!window.gravewright')
             pages[role] = page
         gm, player = pages['gm'], pages['editor']
+        # A previous split installation keeps its immutable archive for rollback,
+        # while the active system is the only visible Savage Worlds package.
+        installed_response = gm.request.get(seed['base'] + '/api/module-packages')
+        assert installed_response.ok
+        installed = installed_response.json()
+        system = next(row for row in installed if row['id'] == seed['package']['id'])
+        previous = next(row for row in installed if row['id'] == system['django']['replaces'][0])
+        assert system['globalEnabled'] is True and system['version'] == seed['package']['version']
+        assert previous['globalEnabled'] is False
+        assert previous['supersededBy'] == seed['package']
+        library_page = gm.context.new_page()
+        library_page.goto(seed['base'] + '/inside?section=addons')
+        library = library_page.locator('[data-module-catalog=installed]')
+        expect(library.locator('.module-catalog__empty')).to_be_visible()
+        expect(library.locator('.module-catalog__card')).to_have_count(0)
+        library_page.goto(seed['base'] + '/inside?section=systems')
+        library = library_page.locator('[data-module-catalog=installed]')
+        expect(library.locator('.module-catalog__card h3')).to_have_text([
+            'Gravewright PDF System', 'Savage Worlds Compatibility Package for Gravewright'])
+        library_page.screenshot(path=str(output / 'system-library.png'))
+        library_page.close()
         def record_response(response):
             if '/modules/gravewright.savage-worlds/api' not in response.url:
                 return
@@ -360,8 +383,12 @@ def main():
     output.mkdir(parents=True)
     server = log = None
     try:
-        server, log, seed = start_fixture(root, output, args.archive.resolve(), 30019, with_card_deck=True)
+        server, log, seed = start_fixture(root, output, args.archive.resolve(), 30019,
+                                        with_card_deck=True, legacy_companion=True)
         result = smoke(seed, output)
+        result['legacyCompanionSuperseded'] = True
+        result['systemOnlyInInstalledLibrary'] = True
+        result['bundledServerLoadedFromInstalledSystem'] = True
         archives = list((Path(seed['fixture']) / 'modules' / 'archives').glob('*.zip'))
         result['archiveSha256'] = fingerprint(archives[0]) if len(archives) == 1 else fingerprint(args.archive.resolve())
         (output / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')

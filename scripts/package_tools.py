@@ -1,4 +1,5 @@
 """Shared, standard-library-only checks for the original blank-sheet package."""
+import ast
 import json
 import re
 from pathlib import Path
@@ -29,7 +30,7 @@ def checked_file(path, root):
     return path
 
 
-def browser_files(root=ROOT):
+def runtime_files(root=ROOT):
     root = root.resolve()
     selected = []
     for path in root.iterdir():
@@ -46,6 +47,13 @@ def browser_files(root=ROOT):
                 or any(part.startswith('.') for part in relative.parts)):
             continue
         files[relative.as_posix()] = checked_file(path, root)
+    server = root / 'server' / 'gravewright_swade'
+    checked_file(server / '__init__.py', root)
+    for path in sorted(server.rglob('*.py')):
+        relative = path.relative_to(server)
+        if any(part.startswith('.') or part == '__pycache__' for part in relative.parts):
+            continue
+        files[(Path('gravewright_swade') / relative).as_posix()] = checked_file(path, root)
     if len(files) != len({name.casefold() for name in files}):
         raise ValueError('Package has paths that differ only in case')
     return files
@@ -83,24 +91,39 @@ def validate_source(root=ROOT, *, require_runtime=True):
     ids = [row['id'] for row in system['itemTypes']]
     if set(ids) != ITEM_TYPES or len(ids) != len(ITEM_TYPES):
         raise ValueError('Item templates do not match the package contract')
-    if 'content' in manifest or 'django' in manifest:
-        raise ValueError('Browser sheet package cannot include compendiums or execute server code')
+    if 'content' in manifest:
+        raise ValueError('The system contains structures and automation, never compendiums')
+    if manifest.get('django') != {'apps': ['gravewright_swade.apps.SwadeConfig'],
+                                  'replaces': ['gravewright.savage-worlds.rules']}:
+        raise ValueError('The system must contain its own dependency-free server automation')
     if system.get('combat') != {'formula':'0','manualInput':'number','showRoll':False,'requiresProvider':True}:
-        raise ValueError('SWADE owns card initiative and requires its separate server rules extension')
+        raise ValueError('SWADE owns card initiative and requires its bundled server provider')
     catalogs = load_locales(root)
     for descriptor in [*system['actorTypes'], *system['itemTypes']]:
         if not re.fullmatch(r'[a-z][a-z0-9_-]*', descriptor['id']):
             raise ValueError('Native type IDs must be lowercase')
         if descriptor.get('labelKey') not in catalogs['en']:
             raise ValueError(f'Missing document type translation: {descriptor["id"]}')
-    files = browser_files(root)
-    required = {'manifest.json', 'model.js', 'LICENSE.md', 'NOTICE.md'}
+    files = runtime_files(root)
+    required = {'manifest.json', 'model.js', 'LICENSE.md', 'NOTICE.md',
+                'gravewright_swade/__init__.py', 'gravewright_swade/apps.py',
+                'gravewright_swade/combat.py'}
     if require_runtime:
         required |= {'main.js', 'sheet.js', 'item-editor.js', 'styles.css', 'locales.json'}
     if not required <= files.keys():
         raise ValueError(f'Missing package files: {sorted(required - files.keys())}')
     if require_runtime and read_json(root / 'locales.json') != catalogs:
         raise ValueError('Rebuild locales.json after editing translations')
+    for name, path in files.items():
+        if path.suffix == '.py':
+            ast.parse(path.read_text(encoding='utf-8'), filename=name)
+    package_tree = ast.parse(files['gravewright_swade/__init__.py'].read_text(encoding='utf-8'))
+    versions = [node.value.value for node in package_tree.body
+                if isinstance(node, ast.Assign)
+                and any(isinstance(target, ast.Name) and target.id == '__version__' for target in node.targets)
+                and isinstance(node.value, ast.Constant)]
+    if versions != [manifest['version']]:
+        raise ValueError('Bundled server automation and system versions must match')
     for name, path in files.items():
         if path.suffix != '.js':
             continue

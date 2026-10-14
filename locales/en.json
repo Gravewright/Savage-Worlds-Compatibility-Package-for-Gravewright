@@ -474,7 +474,7 @@
   "tracker.error.deck-not-found": "The selected deck is unavailable. Stop combat and choose another native deck.",
   "tracker.error.invalid-card-response": "Could not verify the card. Try again.",
   "tracker.error.permission_denied": "You do not have permission for this action.",
-  "tracker.error.unavailable": "Activate the Savage Worlds server rules extension to advance turns.",
+  "tracker.error.unavailable": "Activate the Savage Worlds system in Systems to enable its server automation and advance turns.",
   "tracker.error.conflict": "Combat changed. Refresh before continuing.",
   "rules.attackDice": "Attack dice / RoF",
   "rules.range": "Range modifier",

@@ -1,13 +1,12 @@
-# Savage Worlds Compatibility Package for Gravewright — Server Rules
+# Savage Worlds Compatibility Package for Gravewright — server implementation
 
-Release: **0.1.0**. Requires **Gravewright VTT 0.2.3 or newer** and the
-**Savage Worlds Compatibility Package for Gravewright 0.1.0** browser package.
-This version identifies the separate Django companion; existing releases and
-tags of other Savage Worlds compatibility packages keep their own numbering.
+Release: **0.1.1**. Requires **Gravewright VTT 0.2.4 or newer**.
+This directory is source code inside the system repository, not a separate
+installable module. `scripts/build.py` includes the `gravewright_swade` namespace
+at the root of the single system ZIP, alongside the browser interface.
 
-This free technical compatibility package has the identifier
-`gravewright.savage-worlds.rules`. The browser package owns sheets, rolls and
-user-authored content. This app registers only the
+The system identifier is `gravewright.savage-worlds`. Its browser interface owns
+sheets, rolls and user-authored content. Its bundled Django app registers only the
 `gravewright.savage-worlds` combat provider; it has no models, migrations, routes,
 catalogs, random rolls or additional dependencies.
 
@@ -16,10 +15,11 @@ setting material, PDFs or compendiums. Its original code and documentation are
 licensed under MIT. Savage Worlds names, trademarks and associated logos are
 excluded from that license; see [NOTICE.md](NOTICE.md).
 
-Install its ZIP in **Modules → Install from ZIP**, then activate the Django server
-package through the native activation button. Activation requires the managed
-Runner or `main.py` and restarts the host. Installing the browser system alone
-does not execute Python or enable these clocks. No `.env` change is required.
+Install the system ZIP in **Systems → Install from ZIP**, then activate its
+server automation through the same system's native activation control.
+Activation requires the host owner and managed Runner or `main.py` and restarts
+the host. Select the installed system version for the table. No separate module
+or `.env` change is required.
 
 Temporary states use `statusClocks.distracted` and `statusClocks.vulnerable` with
 `remaining`, `phase`, `owner` and `awaitingStart`. A newly applied next-turn state
@@ -42,7 +42,7 @@ Skipped turns advance explicit clocks. Linked actor documents tick once per
 native command through `event.clockKeys`; independent token snapshots have their
 own keys. The native host retains permissions, retries, revisions and rollback.
 
-Build: `python scripts/build_server.py` from the browser source root. Pure tests:
+Build: `python scripts/build.py` from the repository root. Pure tests:
 `python -m unittest discover -s server/tests -p test_clocks.py`. The separate
 `server/tests/run_django_tests.py` runner uses an in-memory database and temporary
 media/module directories, without reading the production `.env`.

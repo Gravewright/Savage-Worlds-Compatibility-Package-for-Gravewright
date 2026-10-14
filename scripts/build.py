@@ -1,4 +1,4 @@
-"""Build a deterministic browser-module ZIP and SHA-256 sidecar."""
+"""Build one deterministic system ZIP with browser UI and server automation."""
 from datetime import datetime, timezone
 import hashlib
 import json

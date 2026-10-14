@@ -1,8 +1,10 @@
 import hashlib,json,zipfile
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
-record_path=root/'dist/gravewright-savage-worlds-0.1.0.release.json'
+version=json.loads((root/'manifest.json').read_text(encoding='utf-8'))['version']
+record_path=root/f'dist/gravewright-savage-worlds-{version}.release.json'
 record=json.loads(record_path.read_text(encoding='utf-8'))
+assert len(record['artifacts'])==1 and record['artifacts'][0]['type']=='system'
 notice='This game references the Savage Worlds game system, available from Pinnacle Entertainment Group at www.peginc.com. Savage Worlds and all associated logos and trademarks are copyrights of Pinnacle Entertainment Group. Used with permission. Pinnacle makes no representation or warranty as to the quality, viability, or suitability for purpose of this product.'
 logo_sha='3a54347241721cff5891cde5a38cbfff54aeeb76257136b774948b81ccf9dd76'
 for item in record['artifacts']:
@@ -11,7 +13,9 @@ for item in record['artifacts']:
     item['sha256']=hashlib.sha256(archive.read_bytes()).hexdigest()
     with zipfile.ZipFile(archive) as package:
         manifest=json.loads(package.read('manifest.json'))
-        assert manifest['id']==item['id'] and manifest['version']=='0.1.0'
+        assert manifest['id']==item['id'] and manifest['version']==version
+        assert manifest['django']['apps']==['gravewright_swade.apps.SwadeConfig']
+        assert 'gravewright_swade/combat.py' in package.namelist()
         assert notice in package.read('NOTICE.md').decode('utf-8')
         assert notice in package.read('README.md').decode('utf-8')
         if item['type']=='system':

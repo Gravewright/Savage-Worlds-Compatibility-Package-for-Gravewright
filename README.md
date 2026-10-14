@@ -4,7 +4,7 @@
 
 [Português](README.pt-BR.md)
 
-Release **`gravewright.savage-worlds` 0.1.0** of this Django-compatible implementation,
+Release **`gravewright.savage-worlds` 0.1.1** of this Django-compatible implementation,
 reviewed against the revised 2026 Brazilian SWADE edition. The horizontal header, five tabs and VTT
 palette remain. System models, UI and numerical rules live in this project;
 the host supplies only generic document, dice, card, combat and modal contracts.
@@ -21,32 +21,30 @@ This game references the Savage Worlds game system, available from Pinnacle Ente
 
 ## Installation
 
-Requires [Gravewright **0.2.3 or later**](https://github.com/Gravewright/gravewright/releases/tag/v0.2.3),
-SDK **1.0.0** and its translation API. Version 0.2.3 includes the generic
-`context.host` and `card.asset.upload` contracts used by deck imports.
+Requires [Gravewright **0.2.4 or later**](https://github.com/Gravewright/gravewright/releases/tag/v0.2.4),
+SDK **1.0.0** and its translation API. Version 0.2.4 supports systems that
+contain both their browser interface and trusted server automation.
 
-Download both ZIPs from the [0.1.0 release](https://github.com/Gravewright/Savage-Worlds-Compatibility-Package-for-Gravewright/releases/tag/v0.1.0),
-or install them through the signed Gravewright Marketplace.
+Download the system ZIP from the [0.1.1 release](https://github.com/Gravewright/Savage-Worlds-Compatibility-Package-for-Gravewright/releases/tag/v0.1.1),
+or install it through the signed Gravewright Marketplace under **Systems**.
 
-1. Install `dist/gravewright-savage-worlds-rules-0.1.0.zip` under **Modules** as
-   a Django extension and activate it through the native installer. The managed
-   Runner restarts the host.
-2. Install `dist/gravewright-savage-worlds-0.1.0.zip` under **Systems**, then
-   select **Savage Worlds Compatibility Package for Gravewright** for the table. Existing tables must explicitly
-   select the new package version.
+1. Install `dist/gravewright-savage-worlds-0.1.1.zip` under **Systems**.
+2. As host owner, activate the system's server automation from its native
+   activation control in **Systems**. The managed Runner restarts the host.
+3. Select **Savage Worlds Compatibility Package for Gravewright 0.1.1** for
+   the table. Existing tables must explicitly select the new package version.
 
-Both the browser system and server rules extension use **0.1.0** for this release.
-Versions 0.2.x–0.4.0 were internal development numbers. Explicitly select **0.1.0**
-in development tables, which may still select a numerically higher prototype.
-Package IDs, actor data and table settings remain unchanged.
-This numbering belongs to the new implementation and does not rename releases
-of the previously published compatibility package.
+There is one system package: sheets, item templates, settings, translations,
+cards and server clocks all ship together. There is no separate SWADE module
+to install. Package ID, actor data and table settings remain unchanged.
+Activating 0.1.1 replaces the legacy Server Rules activation automatically, so
+the combat provider is loaded only once. Its old installed archive is retained
+for rollback; table data and authored content are not migrated or deleted.
 
-Update older Gravewright 0.2.2 installations to 0.2.3 before importing decks.
+Update older Gravewright installations to 0.2.4 before installing this version.
 
-Builds do not activate production packages or edit `.env`. Without the server
-extension, sheets and rolls remain usable, but combat advancement explicitly
-requires the matching provider.
+Builds do not activate production packages or edit `.env`. Combat advancement
+requires the bundled server provider to be activated by the host owner.
 
 ## Languages through the official Translator
 
@@ -173,12 +171,12 @@ python tests/test_actions_browser.py
 python tests/test_customization_browser.py
 python tests/e2e/languages.py
 python server/tests/run_django_tests.py
-python scripts/build_server.py
 python scripts/build.py
 python scripts/validate_package.py
 ```
 
 Suites in `tests/e2e` install actual ZIPs into disposable databases, media and
-tables without changing `.env` or live data. Browser ZIPs exclude Python server
-source, tools, tests and private references. Both ZIPs have SHA-256 sidecars.
+tables without changing `.env` or live data. The single system ZIP contains the
+browser runtime and its Python namespace. Tools, tests and private references
+are excluded. The ZIP has a SHA-256 sidecar.
 Original code uses [MIT](LICENSE.md); see [NOTICE.md](NOTICE.md).

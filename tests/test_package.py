@@ -1,4 +1,5 @@
 """Meaningful package checks use a temporary fixture, never the real release ZIP."""
+import json
 from pathlib import Path
 import shutil
 import sys
@@ -21,6 +22,9 @@ class PackageTests(unittest.TestCase):
         for name in ('manifest.json', 'package.json', 'model.js', 'LICENSE.md', 'NOTICE.md'):
             shutil.copy2(ROOT / name, self.root / name)
         shutil.copytree(ROOT / 'locales', self.root / 'locales')
+        shutil.copytree(ROOT / 'server' / 'gravewright_swade',
+                        self.root / 'server' / 'gravewright_swade',
+                        ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
         for name in ('main.js', 'sheet.js', 'item-editor.js'):
             (self.root / name).write_text('export default {};\n', encoding='utf-8')
         (self.root / 'styles.css').write_text('.swade {}\n', encoding='utf-8')
@@ -40,7 +44,24 @@ class PackageTests(unittest.TestCase):
             self.assertNotIn('private-notes.json', archive.namelist())
             self.assertNotIn('content/not-a-runtime-file.json', archive.namelist())
             self.assertNotIn('package.json', archive.namelist())
-            self.assertTrue(all(not name.endswith('.py') for name in archive.namelist()))
+            self.assertIn('gravewright_swade/apps.py', archive.namelist())
+            self.assertIn('gravewright_swade/combat.py', archive.namelist())
+            self.assertNotIn('server/manifest.json', archive.namelist())
+            self.assertFalse(any(name.startswith(('scripts/', 'tests/', 'server/'))
+                                 for name in archive.namelist()))
+            manifest = json.loads(archive.read('manifest.json'))
+            self.assertEqual(manifest['django']['apps'], ['gravewright_swade.apps.SwadeConfig'])
+            self.assertIn('entry', manifest)
+            self.assertIn('system', manifest)
+
+    def test_build_rejects_missing_or_mismatched_bundled_automation(self):
+        package = self.root / 'server' / 'gravewright_swade' / '__init__.py'
+        package.write_text("__version__ = '999.0.0'\n", encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'versions must match'):
+            build(self.root)
+        package.unlink()
+        with self.assertRaisesRegex(ValueError, 'missing or outside'):
+            build(self.root)
 
     def test_validator_detects_source_changes_after_packaging(self):
         build(self.root)

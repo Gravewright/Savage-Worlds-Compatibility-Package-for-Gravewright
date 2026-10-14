@@ -40,7 +40,7 @@ def fingerprint(path: Path) -> str | None:
 
 
 def start_fixture(root: Path, output: Path, archive: Path, port: int, *, with_card_deck: bool = False,
-                  translator_zip: Path | None = None):
+                  translator_zip: Path | None = None, legacy_companion: bool = False):
     seed_path = output / "seed.json"
     log = (output / "server.log").open("w", encoding="utf-8")
     fixture = output / "fixture"
@@ -58,6 +58,8 @@ def start_fixture(root: Path, output: Path, archive: Path, port: int, *, with_ca
         "--seed", str(seed_path), "--port", str(port)]
     if with_card_deck:
         command.append('--with-card-deck')
+    if legacy_companion:
+        command.append('--legacy-companion')
     if translator_zip:
         command.extend(['--translator-zip', str(translator_zip.resolve())])
     server = subprocess.Popen(command, cwd=root, stdout=log, stderr=log)
@@ -125,7 +127,8 @@ def drop_item(page, window, item_id: str, table_id: str):
 def test_sheets(seed: dict, output: Path) -> dict:
     actor_id = seed["actor"]
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch()
+        browser = playwright.chromium.launch(env={**os.environ,
+            'CHROME_LOG_FILE': str(output / 'chromium.log')})
         errors = []
         contexts = {}
         pages = {}

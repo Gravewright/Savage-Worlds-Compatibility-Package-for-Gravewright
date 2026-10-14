@@ -474,7 +474,7 @@
   "tracker.error.deck-not-found": "O baralho selecionado está indisponível. Encerre o combate e escolha outro baralho nativo.",
   "tracker.error.invalid-card-response": "Não foi possível conferir a carta. Tente novamente.",
   "tracker.error.permission_denied": "Você não tem permissão para esta ação.",
-  "tracker.error.unavailable": "Ative a extensão de regras de Savage Worlds no servidor para avançar os turnos.",
+  "tracker.error.unavailable": "Ative o sistema Savage Worlds em Sistemas para habilitar suas automações de servidor e avançar os turnos.",
   "tracker.error.conflict": "O combate mudou. Atualize antes de continuar.",
   "rules.attackDice": "Dados de ataque / CdT",
   "rules.range": "Modificador de Distância",

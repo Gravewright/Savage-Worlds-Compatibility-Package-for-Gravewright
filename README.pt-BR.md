@@ -4,7 +4,7 @@
 
 [English](README.md)
 
-Lançamento `gravewright.savage-worlds` **0.1.0** desta implementação para Django, revisado com a
+Lançamento `gravewright.savage-worlds` **0.1.1** desta implementação para Django, revisado com a
 edição brasileira revisada de SWADE de 2026. Mantém o cabeçalho horizontal,
 as cinco abas e a paleta do VTT. Toda a lógica Savage Worlds fica neste projeto;
 o core oferece apenas seus contratos genéricos.
@@ -21,32 +21,31 @@ This game references the Savage Worlds game system, available from Pinnacle Ente
 
 ## Instalação
 
-Requer [Gravewright VTT **0.2.3 ou posterior**](https://github.com/Gravewright/gravewright/releases/tag/v0.2.3),
-SDK **1.0.0** e sua API de tradução. A versão 0.2.3 inclui os contratos genéricos
-`context.host` e `card.asset.upload` usados na importação de baralhos.
+Requer [Gravewright VTT **0.2.4 ou posterior**](https://github.com/Gravewright/gravewright/releases/tag/v0.2.4),
+SDK **1.0.0** e sua API de tradução. A versão 0.2.4 permite que sistemas
+contenham sua interface e suas automações de servidor no mesmo pacote.
 
-Baixe os dois ZIPs na [release 0.1.0](https://github.com/Gravewright/Savage-Worlds-Compatibility-Package-for-Gravewright/releases/tag/v0.1.0),
-ou instale pelo Marketplace assinado do Gravewright.
-Este projeto produz dois pacotes:
+Baixe o ZIP do sistema na [release 0.1.1](https://github.com/Gravewright/Savage-Worlds-Compatibility-Package-for-Gravewright/releases/tag/v0.1.1),
+ou instale pelo Marketplace assinado do Gravewright em **Sistemas**.
 
-1. Instale `dist/gravewright-savage-worlds-rules-0.1.0.zip` em **Módulos**, como
-   extensão Django, e ative pelo instalador nativo. O Runner realiza o reinício.
-2. Instale `dist/gravewright-savage-worlds-0.1.0.zip` em **Sistemas** e selecione
-   **Savage Worlds Compatibility Package for Gravewright** na mesa. Mesas existentes precisam selecionar a
-   versão nova explicitamente nas extensões da mesa.
+1. Instale `dist/gravewright-savage-worlds-0.1.1.zip` em **Sistemas**.
+2. Como proprietário do host, ative as automações pelo controle nativo do próprio
+   sistema em **Sistemas**. O Runner realiza o reinício.
+3. Selecione **Savage Worlds Compatibility Package for Gravewright 0.1.1** na
+   mesa. Mesas existentes precisam selecionar a versão nova explicitamente.
 
-O sistema e a extensão de regras do servidor usam **0.1.0** neste lançamento.
-As numerações 0.2.x–0.4.0 eram internas de desenvolvimento. Em mesas de teste,
-selecione **0.1.0** explicitamente; a versão numericamente maior pode continuar
-selecionada. Os IDs dos pacotes, dados das fichas e configurações são preservados.
-A numeração pertence à implementação nova e não renomeia releases do pacote
-de compatibilidade publicado anteriormente.
+Existe um único pacote de sistema: fichas, itens, configurações, traduções,
+cartas e relógios do servidor são distribuídos juntos. Não há um módulo SWADE
+separado para instalar. O ID do sistema, fichas e configurações são preservados.
+A ativação da versão 0.1.1 substitui automaticamente a ativação antiga do Server
+Rules, evitando carregar o provedor duas vezes. O arquivo instalado antigo fica
+preservado para reversão; dados da mesa e conteúdo do usuário não são removidos.
 
-Atualize instalações anteriores do Gravewright 0.2.2 para 0.2.3 antes de importar baralhos.
+Atualize instalações anteriores do Gravewright para 0.2.4 antes desta versão.
 
-O build não instala nem ativa os pacotes em produção e não altera `.env`.
-Sem a extensão de servidor, as fichas e rolagens continuam disponíveis, mas
-avançar o combate exige a ativação do provedor correspondente.
+O build não instala nem ativa pacotes em produção e não altera `.env`.
+Avançar o combate exige a ativação das automações incluídas no sistema pelo
+proprietário do host.
 
 ## Idiomas com o Translator oficial
 
@@ -153,7 +152,7 @@ o início exige pelo menos um participante e um baralho selecionado disponível.
 e o turno atual; **Retomar** continua dessa posição salva. A pausa persiste ao
 reabrir o painel. **Encerrar combate** conclui o encontro. O painel indica se
 o combate está parado, em andamento ou pausado.
-Os turnos e as permissões pertencem ao combate nativo. A extensão de servidor
+Os turnos e as permissões pertencem ao combate nativo. O próprio sistema
 avança relógios configurados, inclusive em turnos pulados, sem rolar ações ou
 dano por conta própria. Voltar no combate não desfaz resultados ou recursos.
 
@@ -185,12 +184,12 @@ python tests/test_actions_browser.py
 python tests/test_customization_browser.py
 python tests/e2e/languages.py
 python server/tests/run_django_tests.py
-python scripts/build_server.py
 python scripts/build.py
 python scripts/validate_package.py
 ```
 
 As suítes em `tests/e2e` instalam ZIPs reais em banco, mídia e mesa descartáveis,
-sem alterar `.env` ou dados em uso. O ZIP de navegador exclui Python, ferramentas,
-testes e referências privadas. Ambos os ZIPs têm SHA-256. Código original sob
+sem alterar `.env` ou dados em uso. O único ZIP do sistema inclui a interface
+e seu namespace Python; ferramentas, testes e referências privadas são excluídos.
+O ZIP tem SHA-256. Código original sob
 [MIT](LICENSE.md); escopo em [NOTICE.md](NOTICE.md).

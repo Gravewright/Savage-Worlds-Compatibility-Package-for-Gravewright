@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import uuid
 import zipfile
+import sys
 
 from django.apps import apps
 from django.test import TestCase
@@ -81,22 +82,23 @@ class NativeContractTests(TestCase):
         effects.advance(self.encounter, 'end', self.encounter.combatants[0], ticked=set())
         self.actor.refresh_from_db(); self.assertEqual(self.actor.data, before)
 
-    def test_the_server_archive_installs_as_django_without_browser_or_extra_requirements(self):
+    def test_one_system_archive_installs_browser_and_server_without_extra_requirements(self):
         from gravewright.modules.packages import ModulePackages
-        from importlib.util import module_from_spec, spec_from_file_location
         source = Path(__file__).resolve().parents[2]
-        spec = spec_from_file_location('swade_server_build', source / 'scripts/build_server.py')
-        build_module = module_from_spec(spec); spec.loader.exec_module(build_module)
+        sys.path.insert(0, str(source / 'scripts'))
+        from build import build
         with tempfile.TemporaryDirectory() as directory:
             isolated = Path(directory)
-            shutil.copytree(source / 'server', isolated / 'source' / 'server')
-            result = build_module.build(isolated / 'source')
+            fixture_source = isolated / 'source'
+            shutil.copytree(source, fixture_source, ignore=shutil.ignore_patterns(
+                '.git', 'dist', 'node_modules', '__pycache__', '*.pyc', '.env*'))
+            result = build(fixture_source)
             with zipfile.ZipFile(result['archive']) as archive:
-                self.assertEqual(set(archive.namelist()), {
-                    'manifest.json', 'README.md', 'LICENSE.md', 'NOTICE.md',
+                self.assertTrue({'manifest.json', 'main.js', 'locales.json',
                     'gravewright_swade/__init__.py', 'gravewright_swade/apps.py',
-                    'gravewright_swade/combat.py',
-                })
+                    'gravewright_swade/combat.py'} <= set(archive.namelist()))
+                self.assertFalse(any(name.startswith(('scripts/', 'tests/', 'server/'))
+                                     for name in archive.namelist()))
                 notice = archive.read('NOTICE.md').decode('utf-8')
                 required_notice = (
                     'This game references the Savage Worlds game system, available from '
@@ -108,11 +110,25 @@ class NativeContractTests(TestCase):
                 )
                 self.assertIn(required_notice, notice)
                 self.assertIn(required_notice, archive.read('README.md').decode('utf-8'))
-                self.assertEqual(json.loads(archive.read('manifest.json'))['version'], '0.1.0')
+                self.assertEqual(json.loads(archive.read('manifest.json'))['version'], '0.1.1')
             store = ModulePackages(isolated / 'modules', keys={})
-            installed = store.install_local(Path(result['archive']).read_bytes(), expected_type='django')
-        self.assertEqual(installed['id'], 'gravewright.savage-worlds.rules')
-        self.assertEqual(installed['name'], 'Savage Worlds Compatibility Package for Gravewright — Server Rules')
+            installed = store.install_local(Path(result['archive']).read_bytes(), expected_type='system')
+        self.assertEqual(installed['id'], SYSTEM_ID)
+        self.assertEqual(installed['name'], 'Savage Worlds Compatibility Package for Gravewright')
         self.assertEqual(installed['django']['apps'], ['gravewright_swade.apps.SwadeConfig'])
-        self.assertNotIn('entry', installed)
+        self.assertEqual(installed['entry'], 'main.js')
+        self.assertIn('system', installed)
         self.assertNotIn('requirements', installed['django'])
+
+    def test_clock_provider_is_loaded_from_the_installed_system_zip(self):
+        import gravewright_swade
+        from django.conf import settings
+        from gravewright.modules.packages import package_type
+        from config.marketplace_apps import selections
+        module_root = Path(settings.GRAVEWRIGHT_MODULES_ROOT)
+        self.assertTrue(Path(gravewright_swade.__file__).resolve().is_relative_to(module_root))
+        self.assertEqual(package_type({'entry': 'main.js', 'system': {},
+                        'django': {'apps': ['gravewright_swade.apps.SwadeConfig']}}), 'system')
+        active = selections(module_root)
+        self.assertEqual(set(active), {SYSTEM_ID})
+        self.assertEqual(active[SYSTEM_ID]['version'], '0.1.1')

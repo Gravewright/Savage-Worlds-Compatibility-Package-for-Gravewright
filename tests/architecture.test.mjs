@@ -57,7 +57,7 @@ test('manifest and default structures provide empty sheets and templates only', 
   const manifest = JSON.parse(read(join(root, 'manifest.json')));
   assert.equal(manifest.id, 'gravewright.savage-worlds');
   assert.equal(Object.hasOwn(manifest, 'content'), false);
-  assert.equal(Object.hasOwn(manifest, 'django'), false);
+  assert.deepEqual(manifest.django, {apps:['gravewright_swade.apps.SwadeConfig'],replaces:['gravewright.savage-worlds.rules']});
   assert.deepEqual(manifest.system.combat, {formula:'0',manualInput:'number',showRoll:false,requiresProvider:true});
   assert.deepEqual(manifest.system.itemTypes.map(type => type.id).sort(), [...ITEM_TYPE_IDS].sort());
   for (const collection of COLLECTIONS) assert.deepEqual(createSheet()[collection], []);

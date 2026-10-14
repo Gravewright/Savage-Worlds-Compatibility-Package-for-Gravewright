@@ -1,8 +1,8 @@
 {
   "id": "gravewright.savage-worlds",
   "name": "Savage Worlds Compatibility Package for Gravewright",
-  "version": "0.1.0",
-  "description": "Original editable SWADE sheets and item templates with package-owned mechanical automation. Requires Gravewright VTT 0.2.3+. No game content or compendiums. Turn clocks require the matching Savage Worlds Rules server extension.",
+  "version": "0.1.1",
+  "description": "Original editable SWADE sheets, item templates and complete package-owned mechanical automation. Requires Gravewright VTT 0.2.4+. No game content or compendiums.",
   "author": "Gravewright contributors",
   "license": "MIT",
   "sdk": {
@@ -10,6 +10,10 @@
     "tested": "1.0.0"
   },
   "entry": "main.js",
+  "django": {
+    "apps": ["gravewright_swade.apps.SwadeConfig"],
+    "replaces": ["gravewright.savage-worlds.rules"]
+  },
   "system": {
     "actorTypes": [
       {

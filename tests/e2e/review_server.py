@@ -51,9 +51,6 @@ def available_port(preferred: int) -> int:
 def configure_environment(root: Path, fixture: Path, port: int) -> None:
     # Process exports take precedence over optional .env defaults. All persisted
     # state and package registries are selected before Django imports settings.
-    server = MODULE / 'server'
-    if not (server / 'gravewright_swade' / 'apps.py').is_file():
-        raise RuntimeError('Build the module server companion before running a rules fixture.')
     os.environ.update({
         "PYTHON_DOTENV_DISABLED": "1",
         "PYTHONUTF8": "1",
@@ -71,8 +68,9 @@ def configure_environment(root: Path, fixture: Path, port: int) -> None:
         "GRAVEWRIGHT_MEDIA_ROOT": str(fixture / "media"),
         "GRAVEWRIGHT_MODULES_ROOT": str(fixture / "modules"),
         "GRAVEWRIGHT_CONTENT_ROOT": str(fixture / "content"),
-        "GRAVEWRIGHT_SERVER_APPS": "gravewright_swade.apps.SwadeConfig",
-        "GRAVEWRIGHT_SERVER_APP_PATHS": str(server),
+        "GRAVEWRIGHT_SERVER_APPS": "",
+        "GRAVEWRIGHT_SERVER_APP_PATHS": "",
+        "GRAVEWRIGHT_DJANGO_REGISTRY": str(fixture / "modules" / "server-apps.json"),
         "GRAVEWRIGHT_API_MODULES_ROOT": str(root / "extensions" / "api") if (root / "extensions" / "api").is_dir() else "",
         "GRAVEWRIGHT_DJANGO_MODULES_ROOT": str(root / "extensions" / "django") if (root / "extensions" / "django").is_dir() else "",
         "GRAVEWRIGHT_REDIS_URL": "",
@@ -80,7 +78,6 @@ def configure_environment(root: Path, fixture: Path, port: int) -> None:
         "GRAVEWRIGHT_MARKETPLACE_KEYS_FILE": "",
         "TRUSTED_PROXIES": "",
     })
-    sys.path.insert(0, str(server))
     sys.path.insert(0, str(root))
 
 
@@ -98,6 +95,9 @@ def create_fixture(root: Path, fixture: Path, archive: Path, translator: Path | 
         raise ValueError(f'Package violates the host manifest contract: {details}')
     import django
     django.setup()
+    import gravewright_swade
+    if not Path(gravewright_swade.__file__).resolve().is_relative_to(fixture / 'modules' / 'packages'):
+        raise RuntimeError('The fixture must load server automation from the installed system ZIP')
     from django.conf import settings
     from django.core.management import call_command
     from django.test import Client
@@ -185,6 +185,7 @@ def main() -> None:
     parser.add_argument("--archive", type=Path, default=default_archive())
     parser.add_argument("--translator-zip", type=Path)
     parser.add_argument("--with-card-deck", action="store_true", help="Seed 54 native cards with test front images in the disposable fixture.")
+    parser.add_argument("--legacy-companion", action="store_true", help="Exercise migration from the old server-only activation without deleting its installed archive.")
     parser.add_argument("--fixture", type=Path)
     parser.add_argument("--seed", type=Path)
     parser.add_argument("--port", type=int, default=30019)
@@ -199,6 +200,9 @@ def main() -> None:
         raise RuntimeError(f"Build the SWADE archive before starting the fixture: {archive}")
     port = available_port(args.port)
     configure_environment(root, fixture, port)
+    sys.path.insert(0, str(MODULE / 'tests'))
+    from package_fixture import prepare_installed_system
+    prepare_installed_system(root, archive, legacy_companion=args.legacy_companion)
     seed = create_fixture(root, fixture, archive, args.translator_zip, with_card_deck=args.with_card_deck)
     seed["base"] = f"http://127.0.0.1:{port}"
     seed_file = (args.seed or fixture / "seed.json").resolve()
