@@ -17,9 +17,13 @@ env:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: system
     steps:
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
         with:
+          path: system
           persist-credentials: false
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
         with:
@@ -41,12 +45,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24'
-      - run: uv sync --project host-vtt --locked --no-dev
+      - run: uv sync --project ../host-vtt --locked --no-dev
       - name: Test browser rules and original action decks
         run: |
           npm test
           node --test scripts/cards/test_decks.mjs
-          host-vtt/.venv/bin/python -m unittest discover -s scripts/cards -p test_raster.py -v
+          ../host-vtt/.venv/bin/python -m unittest discover -s scripts/cards -p test_raster.py -v
       - name: Build and check the single system archive
         run: |
           python scripts/build.py
@@ -55,4 +59,4 @@ jobs:
       - name: Test package isolation and original VTT 0.2.3 contracts
         run: |
           python -m unittest discover -s tests -p test_package.py -v
-          host-vtt/.venv/bin/python tests/run_host_tests.py
+          ../host-vtt/.venv/bin/python tests/run_host_tests.py
