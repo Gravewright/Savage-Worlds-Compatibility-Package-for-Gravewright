@@ -1,10 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createCopyWorkflow, createItemWorkflow, searchText} from '../workflow.js';
+import {createCopyWorkflow, createItemWorkflow, searchText, alphabeticalRows} from '../workflow.js';
 
 test('library search matches accents and capitalization', () => {
   assert.equal(searchText('Perícia Ágil'), 'pericia agil');
   assert.ok(searchText('Perícia pessoal').includes(searchText('PERICIA')));
+});
+
+test('skill presentation sorts accents and numbers in the current locale without rewriting stored order', () => {
+  const rows = ['Zebra', 'Ñandú', 'Nube', 'Águia 10', 'Águia 2', 'Nandú'].map((name, index) => ({id:String(index), name, data:{die:8, attribute:'smarts'}}));
+  const snapshot = structuredClone(rows);
+  assert.deepEqual(alphabeticalRows(rows, 'en').map(row => row.name), ['Águia 2', 'Águia 10', 'Ñandú', 'Nandú', 'Nube', 'Zebra']);
+  assert.deepEqual(alphabeticalRows(rows, 'es').map(row => row.name), ['Águia 2', 'Águia 10', 'Nandú', 'Nube', 'Ñandú', 'Zebra']);
+  assert.deepEqual(rows, snapshot);
 });
 
 test('retry after an actor save failure does not create a second item or copy', async () => {

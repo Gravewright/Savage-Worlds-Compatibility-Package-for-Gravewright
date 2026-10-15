@@ -4,7 +4,7 @@
 
 [English](README.md)
 
-Lançamento `gravewright.savage-worlds` **0.1.1** para Gravewright VTT 0.2.3, revisado com a
+`gravewright.savage-worlds` **0.1.2** para Gravewright VTT 0.2.3, revisado com a
 edição brasileira revisada de SWADE de 2026. Mantém o cabeçalho horizontal,
 as cinco abas e a paleta do VTT. Toda a lógica Savage Worlds fica neste projeto;
 o core oferece apenas seus contratos genéricos.
@@ -25,14 +25,22 @@ Funciona no [Gravewright VTT **0.2.3 já publicado**](https://github.com/Gravewr
 com SDK **1.0.0** e sua API de tradução. Todo o código executado pertence a este
 pacote de sistema para o navegador.
 
-Baixe o ZIP do sistema na [release 0.1.1](https://github.com/Gravewright/Savage-Worlds-Compatibility-Package-for-Gravewright/releases/tag/v0.1.1),
-ou instale pelo Marketplace assinado do Gravewright em **Sistemas**.
+Instale pelo Marketplace assinado do Gravewright em **Sistemas**, ou baixe o ZIP
+e seu SHA-256 na
+[release 0.1.2](https://github.com/Gravewright/Savage-Worlds-Compatibility-Package-for-Gravewright/releases/tag/v0.1.2).
+Gere este código com `python scripts/build.py`.
 
-1. Instale `dist/gravewright-savage-worlds-0.1.1.zip` em **Sistemas**.
-2. Selecione **Savage Worlds Compatibility Package for Gravewright 0.1.1** na
+1. Instale `dist/gravewright-savage-worlds-0.1.2.zip` em **Sistemas**.
+2. Selecione **Savage Worlds Compatibility Package for Gravewright 0.1.2** na
    mesa. Mesas existentes precisam selecionar a versão nova explicitamente.
 3. Como mestre, abra **Extensões → Savage Worlds → Personalizar** e selecione ou
    crie o baralho de ação nativo da mesa.
+
+Os builds locais de revisão foram reunidos nesta versão. Se outra 0.1.2 local
+já estiver instalada, selecione outra versão instalada nas mesas afetadas, remova
+aquele build pelo gerenciador nativo e instale a 0.1.2 pública. O host não
+sobrescreve o mesmo ID/versão com bytes diferentes. Builds locais com numeração
+maior exigem selecionar a 0.1.2 manualmente.
 
 Um único pacote de sistema reúne fichas, modelos de itens, configurações,
 traduções, imagens de cartas e automações de duração. O ID do sistema, as fichas
@@ -46,6 +54,73 @@ uma atualização do VTT. Fichas, opções e conteúdo permanecem no namespace d
 
 O build não instala pacotes em produção nem altera `.env`. O mestre avança o
 combate pelo tracker do pacote, usando as permissões existentes do host.
+
+## Espaçamento e legibilidade das fichas
+
+As fichas de personagem, NPC e os treze tipos de item usam a mesma escala fixa
+de espaçamento do VTT: 0, 1, 2, 4, 8, 12, 16, 20, 24, 28, 32, 40, 48, 56 e 64px.
+Os raios usam 4, 8, 12 e 16px, além dos formatos cápsula e círculo. Os tokens
+ficam restritos ao pacote, permitindo a mesma apresentação no VTT 0.2.3
+publicado e em versões com estilos novos. Os textos da interface têm pelo menos
+12px; dimensões específicas de um componente continuam locais.
+
+Os cartões de atributo e as listas seguem seu conteúdo, sem esticar para igualar
+uma coluna vizinha. Cabeçalhos, listas vazias e editores de texto ocupam menos
+espaço vertical. As condições ficam numa faixa própria. As áreas de texto
+continuam redimensionáveis, com rolagem para conteúdo longo; os resumos de item
+quebram linhas em janelas estreitas. Dados e regras numéricas são preservados.
+
+O cabeçalho destaca o nome da personagem; a identificação do sistema fica no
+rodapé. Movimentação usa uma bota vista de lado. Os controles de Ferimentos e
+Fadiga exibem suas penalidades básicas; marcas extras de ferimento respeitam o
+limite existente de −3 e mantêm rótulos acessíveis com o nível individual.
+Atributos e listas vazias dispensam molduras internas. A barra destaca o teste
+de característica e mantém receber dano acessível; corrida, descanso, fadiga e
+as demais opções ficam no modal nativo **Ações**. Permissões, salvamento e
+cálculos continuam usando os mesmos fluxos.
+
+### Janelas de rolagem e perícias
+
+Janelas de regras e rolagens começam com a altura necessária aos controles e
+agrupam campos e botões de ação. Mantêm movimento, redimensionamento, foco,
+Escape e rolagem nativos em telas menores, com texto da interface de pelo menos
+12px.
+
+Tabelas e seletores de perícia ficam em ordem alfabética pelo nome exibido,
+considerando o idioma ativo. Nomes escritos pelo usuário permanecem iguais;
+a ordenação não reorganiza as coleções salvas. Cada linha expõe o seletor de
+atributo vinculado. Alterá-lo salva apenas esse vínculo: a perícia mantém seu
+próprio dado e modificador. Rolagens seguintes usam o vínculo atual nos efeitos
+e penalidades aplicáveis, inclusive após editar a perícia sem reabrir a ficha.
+Em seções estreitas, cada perícia agrupa seus controles rotulados abaixo do nome
+e das ações. Após uma rolagem, o foco segue para a próxima ação disponível quando
+o botão original fica oculto ou desabilitado.
+
+O cenário Playwright abre todos os tipos registrados e todas as abas com dados
+sintéticos vazios, preenchidos e longos, em larguras amplas, intermediárias e
+estreitas. Também verifica editores de itens pertencentes à ficha e as prévias
+de leitura. Execute `python tests/e2e/sheet_density.py --help` para consultar as
+opções de VTT isolado, navegador, arquivo ZIP e diretório de resultados.
+
+### Itens e coleções
+
+Os treze tipos de item usam cabeçalhos e grupos de detalhes compactos. Descrições
+e anotações vazias começam pequenas; textos longos e controles rolam dentro da
+tela, mantendo fechamento, movimento e redimensionamento nativos. Editores
+integrados e prévias de leitura mantêm os mesmos campos sem repetir os fatos do
+cabeçalho no resumo. O texto da interface continua com pelo menos 12px.
+
+Inventário, características, poderes, equipamento e biblioteca ficam em ordem
+alfabética pelo nome exibido no idioma ativo. Seletores de reservas, perícias,
+modificadores e poderes seguem a mesma ordem, preservando seleções, rascunhos,
+foco e poderes marcados. A apresentação não reorganiza as coleções salvas.
+Itens de perícia conservam o seletor de atributo vinculado, o dado próprio e o
+modificador.
+
+O diretório nativo de itens e o navegador de compêndios pertencem ao Gravewright.
+As melhorias em seu código são separadas deste ZIP de sistema; o pacote continua
+compatível com o VTT 0.2.3 publicado, sem exigir atualização do host. Nenhum
+catálogo, texto de livro ou conteúdo autoral é acrescentado ou alterado.
 
 ## Idiomas com o Translator oficial
 
@@ -182,15 +257,16 @@ necessário para executar o sistema.
 
 ```sh
 npm test
+node --test scripts/cards/test_decks.mjs
 python -m unittest discover -s tests -p "test_package.py"
 python tests/test_item_editor_browser.py
 python tests/test_modal_browser.py
 python tests/test_actions_browser.py
 python tests/test_customization_browser.py
 python tests/e2e/languages.py
-python tests/run_host_tests.py
 python scripts/build.py
 python scripts/validate_package.py
+python tests/run_host_tests.py
 ```
 
 As suítes em `tests/e2e` instalam ZIPs reais em banco, mídia e mesa descartáveis,

@@ -1,16 +1,17 @@
 /** Editable numeric effects and clocks; no named ability or power content. */
-import {el, bindTranslation} from './ui.js';
+import {el, bindTranslation, bindNameOrder} from './ui.js';
 
-export function itemRulesEditor({doc,t,type,data,changed,canEdit,skills=[],pools=[],powers=[]}) {
+export function itemRulesEditor({doc,t,type,data,changed,canEdit,getLocale,skills=[],pools=[],powers=[]}) {
   const root=el(doc,'section','gws-item-group gws-item-rules'),editable=()=>typeof canEdit==='function'?canEdit():canEdit===true;
   root.append(el(doc,'h3','', () => t('rules.itemAutomation')),el(doc,'p','gws-field-hint', () => t('rules.modifierHint')));
   const grid=el(doc,'div','gws-item-field-grid');root.append(grid);
   function field(path,key,{choices,boolean=false,number=false,min}={}) {
     const wrap=el(doc,'label','gws-field'),node=el(doc,choices?'select':'input');wrap.append(el(doc,'span','', () => t(key)),node);
-    if(choices)for(const [value,label]of choices){const option=el(doc,'option','',label);option.value=value;node.append(option);}
+    if(choices)for(const [value,label]of choices){const option=el(doc,'option','',label);option.value=value;if(['skillId','poolId'].includes(path) && value)option.dataset.gwsSortName=option.textContent;node.append(option);}
     else node.type=boolean?'checkbox':number?'number':'text';
     if(number){node.step='any';if(min!==undefined)node.min=min;}
     const value=data()[path];if(boolean)node.checked=value===true;else node.value=value??'';
+    if(['skillId','poolId'].includes(path))bindNameOrder(node,getLocale);
     bindTranslation(node, 'aria-label', () => t(key));node.dataset.gwsItemField=path;
     if(choices || boolean)node.disabled=!editable();else node.readOnly=!editable();
     node.addEventListener(choices || boolean?'change':'input',()=>{
@@ -40,10 +41,11 @@ export function itemRulesEditor({doc,t,type,data,changed,canEdit,skills=[],pools
   if(type==='arcane-device') {
     const group=el(doc,'div','gws-device-powers');group.append(el(doc,'h4','', () => t('rules.devicePowers')));root.append(group);
     if(!powers.length)group.append(el(doc,'p','gws-field-hint', () => t('rules.devicePowersHint')));
-    for(const power of powers){const label=el(doc,'label','gws-field gws-item-checkbox'),control=el(doc,'input');control.type='checkbox';control.disabled=!editable();control.checked=(data().powerIds || []).includes(power.id);
+    for(const power of powers){const label=el(doc,'label','gws-field gws-item-checkbox'),control=el(doc,'input');control.type='checkbox';control.disabled=!editable();control.checked=(data().powerIds || []).includes(power.id);label.dataset.gwsSortName=power.name;
       control.setAttribute('aria-label',power.name);label.append(el(doc,'span','',power.name),control);group.append(label);
       control.onchange=()=>{const current=new Set(data().powerIds || []);if(control.checked)current.add(power.id);else current.delete(power.id);changed('powerIds',[...current]);};
     }
+    bindNameOrder(group,getLocale);
   }
   if(type==='effect') {
     field('remaining','rules.clockRemaining',{number:true,min:0});
@@ -62,7 +64,7 @@ export function itemRulesEditor({doc,t,type,data,changed,canEdit,skills=[],pools
         ...['agility','smarts','spirit','strength','vigor'].flatMap(id=>[[`attribute.${id}`, () => t(`attribute.${id}`)],[`attribute.${id}.steps`, () => t('rules.modifierDieSteps',{name:t(`attribute.${id}`)})]]),
         ...skills.flatMap(row=>[[`skill.${row.id}`,row.name],[`skill.${row.id}.steps`, () => t('rules.modifierDieSteps',{name:row.name})]])];
       if(entry.target && !targets.some(([id])=>id===entry.target))targets.push([entry.target,entry.target]);
-      for(const [id,label]of targets){const option=el(doc,'option','',label);option.value=id;target.append(option);}target.value=entry.target || '';bindTranslation(target, 'aria-label', () => t('rules.modifierTarget'));target.disabled=!editable();
+      for(const [id,label]of targets){const option=el(doc,'option','',label);option.value=id;if(id)bindTranslation(option,'data-gws-sort-name',label);target.append(option);}target.value=entry.target || '';bindTranslation(target, 'aria-label', () => t('rules.modifierTarget'));target.disabled=!editable();bindNameOrder(target,getLocale);
       for(const id of ['add','override']){const option=el(doc,'option','', () => t(`rules.modifierMode.${id}`));option.value=id;mode.append(option);}mode.value=entry.mode || 'add';bindTranslation(mode, 'aria-label', () => t('rules.modifierMode'));
       value.type='number';value.step='any';value.value=entry.value??0;bindTranslation(value, 'aria-label', () => t('rules.modifierValue'));
       enabled.disabled=mode.disabled=remove.disabled=!editable();target.readOnly=value.readOnly=!editable();remove.type='button';

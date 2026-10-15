@@ -1,7 +1,7 @@
 {
   "id": "gravewright.savage-worlds",
   "name": "Savage Worlds Compatibility Package for Gravewright",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Original editable SWADE sheets, item templates and package-owned browser automation for Gravewright VTT 0.2.3. No game content or compendiums.",
   "author": "Gravewright contributors",
   "license": "MIT",

@@ -1,6 +1,7 @@
 """Modal regression checks against the real native SDK on an isolated server."""
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+import os
 from pathlib import Path
 from threading import Thread
 from urllib.parse import urlsplit
@@ -8,9 +9,19 @@ from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright
 
 
+def find_host_root(source):
+    override = os.environ.get('GRAVEWRIGHT_TEST_HOST_ROOT')
+    candidates = [Path(override)] if override else source.parents
+    for candidate in candidates:
+        root = candidate.resolve()
+        if (root / 'manage.py').is_file() and (root / 'gravewright').is_dir():
+            return root
+    raise RuntimeError('Set GRAVEWRIGHT_TEST_HOST_ROOT to a Gravewright checkout containing manage.py and gravewright/.')
+
+
 def main():
     source = Path(__file__).resolve().parents[1]
-    host = source.parents[1]
+    host = find_host_root(source)
     modules = host / "gravewright/modules/static/gravewright_modules"
 
     class Handler(SimpleHTTPRequestHandler):

@@ -1,8 +1,8 @@
 /** Permission-scoped support, Tests and healing; all documents use native APIs. */
 import {ATTRIBUTES, cloneData, createItemSheet, normalizeSheet} from './model.js';
 import {healingResult, testResult} from './combat.js';
-import {DOCUMENT_NAME_MAX, el, bindTranslation} from './ui.js';
-import {searchText} from './workflow.js';
+import {DOCUMENT_NAME_MAX, el, bindTranslation, bindNameOrder} from './ui.js';
+import {searchText, alphabeticalRows} from './workflow.js';
 
 const error = (code, message) => Object.assign(new Error(message || code), {code});
 const options = signal => signal ? {signal} : {};
@@ -52,7 +52,7 @@ export function applySupport(value, outcome, target, {name = '', sourceActorId =
 export function targetActions(env) {
   const {doc, api, context, signal, t, modal, button, canEdit, getSheet, getName, flush, trait} = env;
   const label = key => t(`target.${key}`);
-  const skillChoices = (sheet, healing = false) => sheet.skills.filter(row => !healing || row.data.role === 'healing')
+  const skillChoices = (sheet, healing = false) => alphabeticalRows(sheet.skills.filter(row => !healing || row.data.role === 'healing'),api.i18n?.locale)
     .map(row => [`skill.${row.id}`, row.name || t('item.untitled')]);
   const attributeChoices = () => ATTRIBUTES.map(({id, labelKey}) => [`attribute.${id}`, () => t(labelKey)]);
   function ownedChoices(sheet, {healing = false, testing = false} = {}) {
@@ -134,7 +134,8 @@ export function targetActions(env) {
         const targetChoices = [...attributeChoices(), ...skillChoices(normalizeSheet(selected.data))];
         if (!ready) {
           selectedEntry = entry; supportTarget.replaceChildren();
-          for (const [value, text] of targetChoices) {const option = el(doc, 'option', '', text); option.value = value; supportTarget.append(option);}
+          for (const [value, text] of targetChoices) {const option = el(doc, 'option', '', text); option.value = value;if(value.startsWith('skill.'))option.dataset.gwsSortName=option.textContent;supportTarget.append(option);}
+          bindNameOrder(supportTarget,()=>api.i18n?.locale);
           bindTranslation(supportName, 'textContent', () => `${label('targetTrait')} · ${selected.name}`);
           supportField.hidden = false; start.hidden = false; supportTarget.focus(); return;
         }

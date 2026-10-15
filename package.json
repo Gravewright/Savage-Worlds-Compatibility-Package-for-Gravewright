@@ -1,6 +1,6 @@
 {
   "name": "gravewright-savage-worlds",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Free Savage Worlds Compatibility Package for Gravewright with original sheets, item structures and automation",
   "private": true,
   "type": "module",

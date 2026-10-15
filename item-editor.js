@@ -227,7 +227,7 @@ export function itemEditor(env) {
     } else if (!longFields.has(path)) {
       control.type = 'text'; control.maxLength = path === 'img' ? 2048 : 1000;
       if (path === 'img') { control.inputMode = 'url'; control.spellcheck = false; control.autocomplete = 'off'; }
-    } else { control.rows = path === 'description' ? 10 : 4; control.maxLength = 10000; }
+    } else { control.rows = path === 'description' ? 3 : 2; control.maxLength = 10000; }
     if (isBoolean) control.checked = !!value;
     else control.value = String(value);
     if (path === 'core.name') { control.maxLength = DOCUMENT_NAME_MAX; bindTranslation(control, 'placeholder', () => t('item.untitled')); }
@@ -321,14 +321,13 @@ export function itemEditor(env) {
   root.append(nav, body);
   const descriptionGrid = element(doc, 'div', 'gws-item-description-grid'), narrative = element(doc, 'div', 'gws-item-narrative');
   const aside = element(doc, 'aside', 'gws-item-aside'), reading = element(doc, 'dl', 'gws-item-reading-facts');
-  const summaryEmpty = element(doc, 'p', 'gws-item-empty', () => t(canEdit() ? 'item.summaryEmpty' : 'common.empty'));
   const prose = element(doc, 'div', 'gws-item-reading'), proseOutputs = [];
   for (const path of ['description', 'notes']) {
     narrative.append(field(path));
     const section = element(doc, 'section'), output = element(doc, 'div', 'gws-item-prose');
     section.append(element(doc, 'h3', '', () => t(`item.field.${path}`)), output); prose.append(section); proseOutputs.push({path, output});
   }
-  aside.append(element(doc, 'h3', '', () => t('item.summary')), reading, summaryEmpty);
+  aside.append(reading);
   const modebar = element(doc, 'div', 'gws-item-modebar'), mode = element(doc, 'button', 'gws-button'); mode.type = 'button'; mode.hidden = !canEdit();
   let readingMode = !canEdit() || state.reading === true;
   function setReading(value) {
@@ -342,6 +341,7 @@ export function itemEditor(env) {
   const imageState = element(doc, 'p', 'gws-item-image-state'); imageState.setAttribute('role', 'status'); imageState.hidden = true;
   for (const [group, paths] of [...groups[type], ['other', ['source', 'img']]]) {
     const section = element(doc, 'section', 'gws-item-group'), fields = element(doc, 'div', 'gws-item-field-grid');
+    section.dataset.gwsItemGroup = group;
     section.append(element(doc, 'h3', '', () => t(`item.group.${group}`)), fields);
     for (const path of paths) fields.append(field(path));
     if (group === 'other') {
@@ -355,7 +355,7 @@ export function itemEditor(env) {
     }
     detailGrid.append(section);
   }
-  detailGrid.append(itemRulesEditor({doc,t,type,data,changed,canEdit,skills:env.skills,pools:env.pools,powers:env.powers}));
+  detailGrid.append(itemRulesEditor({doc,t,type,data,changed,canEdit,getLocale:env.getLocale,skills:env.skills,pools:env.pools,powers:env.powers}));
   let previousImage;
   function display(path) {
     const value = data()[path];
@@ -375,17 +375,18 @@ export function itemEditor(env) {
     if (src !== previousImage) {
       previousImage = src; image.hidden = true; placeholder.hidden = false; portrait.dataset.imageState = src ? 'loading' : 'empty';
       bindTranslation(portrait, 'aria-label', () => t(src ? 'item.image' : 'item.imageEmpty'));
-      bindTranslation(imageState, 'textContent', () => t(data().img ? 'item.imageInvalid' : 'item.imageEmpty')); imageState.hidden = !!src;
+      bindTranslation(imageState, 'textContent', () => t(data().img ? 'item.imageInvalid' : 'item.imageEmpty')); imageState.hidden = !!src || !data().img;
       if (src) image.src = src; else image.removeAttribute('src');
     }
     removeImage.disabled = !canEdit() || !data().img;
     reading.replaceChildren();
-    for (const path of [...(factFields[type] || []), 'source']) {
+    // The header already shows the item facts; keep only additional metadata here.
+    for (const path of ['source']) {
       if (data()[path] === '' || data()[path] === null || data()[path] === undefined) continue;
       const row = element(doc, 'div'); row.append(element(doc, 'dt', '', () => t(`item.field.${path}`)), element(doc, 'dd', '', () => display(path))); reading.append(row);
     }
     reading.hidden = !reading.childElementCount;
-    summaryEmpty.hidden = !!reading.childElementCount;
+    aside.hidden = !reading.childElementCount;
   }
   function updateCounters() { for (const {control, counter} of counters) bindTranslation(counter, 'textContent', () => t('item.characters', {count: control.value.length, max: control.maxLength})); }
   refresh(); activate(active); root.refresh = refresh; root.validate = validate; root.showError = showError;

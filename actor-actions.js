@@ -1,7 +1,8 @@
 /** Sheet actions coordinate native dice and package-owned rules, never host internals. */
 import {ATTRIBUTES, normalizeSheet, cloneData} from './model.js';
 import {derive, traitValue, traitPenalty,weaponAttackPenalty,applyModifiers,modifiersForSheet} from './mechanics.js';
-import {el, icon, bindTranslation} from './ui.js';
+import {el, icon, bindTranslation, bindNameOrder} from './ui.js';
+import {alphabeticalRows} from './workflow.js';
 import {traitExpression, interpretTrait, nativeResult, nativeRollWorkflow, keepReroll, actionModifiers, damageExpression, rollOutcome} from './rolls.js';
 import {damageResult, applyDamage, soakAmount, spendBenny, applyFatigue, recoverShaken, recoverStunned,
   escapeRestraint, healingResult, incapacitationResult, supportBonus, testResult} from './combat.js';
@@ -12,6 +13,7 @@ export function actorActions(env) {
   const {doc, api, context, signal, t, modal, button, canEdit, getSheet, getName, replaceSheet, flush} = env;
   const getRules = env.getRules ?? (() => getSheet().rules ?? {});
   const label = key => t(`rules.${key}`);
+  const skillsByName = rows => alphabeticalRows(rows, api.i18n?.locale);
   const targets=targetActions({...env,trait});
   const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   function input(body, key, value, {choices, type = 'number', min, max, step = 'any'} = {}) {
@@ -19,15 +21,25 @@ export function actorActions(env) {
     wrap.append(el(doc, 'span', '', () => label(key)), node); bindTranslation(node, 'aria-label', () => label(key)); node.dataset.gwsRule = key;
     if (choices) for (const [id, text] of choices) {const option = el(doc, 'option', '', text); option.value = id; node.append(option);}
     else {node.type = type; node.step = step; if (min !== undefined) node.min = min; if (max !== undefined) node.max = max;}
-    if (type === 'checkbox') node.checked = value === true; else node.value = value ?? '';
+    if (type === 'checkbox') {node.checked = value === true; wrap.classList.add('gws-item-checkbox');} else node.value = value ?? '';
+    if (choices && key === 'trait') {
+      const skillIds = new Set(getSheet().skills.map(row => row.id));
+      for (const option of node.options) {
+        const value = option.value, attribute = ATTRIBUTES.some(({id}) => value === id || value === `attribute.${id}`);
+        if (!attribute && (skillIds.has(value) || value.startsWith('skill.') && skillIds.has(value.slice(6)))) option.dataset.gwsSortName = option.textContent;
+      }
+      bindNameOrder(node, () => api.i18n?.locale);
+    }
     if (choices || type === 'checkbox') node.disabled = !canEdit(); else node.readOnly = !canEdit();
     body.append(wrap); return node;
   }
   function pane(title) {
     const node = modal(title), body = el(doc, 'div', 'gws-modal-body'), form = el(doc, 'div', 'gws-rule-grid');
+    node.classList.add('gws-rule-modal');
     const message = el(doc, 'p', 'gws-rule-result'), error = el(doc, 'p', 'gws-notice');
     message.setAttribute('role', 'status'); error.setAttribute('role', 'alert'); error.hidden = true;
-    body.append(form, error, message); node.append(body);
+    const actionBar = el(doc, 'div', 'gws-rule-actions');
+    body.append(form, error, message, actionBar); node.append(body);
     let pending,failedAction;const controls=[];
     node.addEventListener('gravewright:sheet-flush', event => {if (pending) event.detail.waitUntil(pending);});
     function action(key, run, {disabled = false} = {}) {
@@ -48,8 +60,16 @@ export function actorActions(env) {
           delete node.dataset.gwsActionPending;
           for(const other of controls){other.dataset.gwsTemporarilyDisabled=String(!!failedAction && other!==failedAction);
             other.disabled=disabled || !canEdit() || other.dataset.gwsActionLocked==='true' || other.dataset.gwsTemporarilyDisabled==='true';}
+          queueMicrotask(() => {
+            if (!node.isConnected || node.closest('[inert]')) return;
+            const focused = doc.activeElement;
+            if (focused && focused !== doc.body && focused !== node && focused !== control) return;
+            const available = candidate => !candidate.disabled && candidate.getClientRects().length;
+            const next = available(control) ? control : [...actionBar.querySelectorAll('button'), ...footer.querySelectorAll('button')].find(available);
+            next?.focus({preventScroll: true});
+          });
         }
-      }, disabled || !canEdit());controls.push(control);body.insertBefore(control,footer);return control;
+      }, disabled || !canEdit());controls.push(control);actionBar.append(control);return control;
     }
     const footer = el(doc, 'footer', 'gws-modal-footer'); footer.append(button( () => t('common.done'), () => node.close())); body.append(footer);
     return {node,body,form,message,error,action};
@@ -137,7 +157,10 @@ export function actorActions(env) {
     return paneUI.node;
   }
   function attribute(id) {return trait(getSheet().attributes[id],{attribute:id,label:t(`attribute.${id}`),labelText:()=>t(`attribute.${id}`)});}
-  function skill(row) {return trait(row.data,{attribute:row.data.attribute,role:row.data.role,skillId:row.id,untrained:row.data.untrained,label:row.name});}
+  function skill(row) {
+    const current = getSheet().skills.find(entry => entry.id === row.id) || row;
+    return trait(current.data,{attribute:current.data.attribute,role:current.data.role,skillId:current.id,untrained:current.data.untrained,label:current.name});
+  }
   function recovery(kind) {
     const sheet=getSheet(), id=kind==='shaken'?'spirit':'vigor';
     const effect={shaken:recoverShaken,stunned:recoverStunned,natural:(s,r)=>healingResult(s,r,{natural:true}),
@@ -154,7 +177,7 @@ export function actorActions(env) {
     });return ui.node;
   }
   function escape() {
-    const sheet=getSheet(), athletics=sheet.skills.filter(row=>row.data.role==='athletics');
+    const sheet=getSheet(), athletics=skillsByName(sheet.skills.filter(row=>row.data.role==='athletics'));
     const options=[['strength', () => t('attribute.strength')],...athletics.map(row=>[row.id,row.name])];
     return trait(sheet.attributes.strength,{label:label('escape'),labelText:()=>label('escape'),recovery:true,options,
       resolve:id=>id==='strength'?{trait:getSheet().attributes.strength,attribute:'strength',modifier:-2}
@@ -213,20 +236,21 @@ export function actorActions(env) {
   function attack(weapon) {
     const sheet=getSheet(), melee=weapon.data.attackType==='melee';
     const skills=sheet.skills.filter(row=>row.data.role===(melee?'fighting':'shooting'));
-    const options=[['', () => label('untrained')],...sheet.skills.map(row=>[row.id,row.name])];
+    const options=[['', () => label('untrained')],...skillsByName(sheet.skills).map(row=>[row.id,row.name])];
     const node=trait(skills[0]?.data || {die:4,modifier:-2},{label:`${label('attack')} · ${weapon.name}`,labelText:()=>`${label('attack')} · ${weapon.name}`,attack:true,weapon,options,selected:skills[0]?.id || '',
       target:melee?2:4,modifier:weaponAttackPenalty(sheet,weapon),resolve:id=>{
         const row=getSheet().skills.find(item=>item.id===id);
         return {trait:row?.data || {die:4,modifier:0,untrained:true},skillId:row?.id,attribute:row?.data.attribute,role:row?.data.role,untrained:!row};
       }});
-    const body=node.querySelector('.gws-modal-body');body.insertBefore(button( () => label('rollDamage'),()=>damage(weapon),!canEdit()),body.lastChild);return node;
+    node.classList.add('gws-rule-modal--attack');
+    node.querySelector('.gws-rule-actions').append(button( () => label('rollDamage'),()=>damage(weapon),!canEdit()));return node;
   }
   function cast(power) {
     const ui=pane( () => `${label('activatePower')} · ${power.name}`), {form,message,action}=ui,sheet=getSheet();
     const noPowerPoints=getRules().noPowerPoints===true,pools=sheet.arcanePools || [],devices=noPowerPoints?[]:devicePools(sheet,power.id);
     const pool=input(form,'pool',power.data.poolId || '',{choices:[['', () => label('defaultPool')],...pools.map(p=>[p.id,p.name || label('pool')]),...devices.map(device=>[device.id, () => `${label('device')} · ${device.label}`])]});
     pool.closest('label').hidden=noPowerPoints;
-    const skillSelect=input(form,'trait',power.data.skillId || '',{choices:[['', () => label('untrained')],...sheet.skills.map(row=>[row.id,row.name])]});
+    const skillSelect=input(form,'trait',power.data.skillId || '',{choices:[['', () => label('untrained')],...skillsByName(sheet.skills).map(row=>[row.id,row.name])]});
     const extra=input(form,'additionalCost',power.data.additionalCost || 0,{min:0}),targets=input(form,'targetCount',1,{min:1,max:100,step:1});
     const shorting=input(form,'shorting',0,{min:0,step:1}),modifier=input(form,'situational',0),actions=input(form,'actions',1,{min:1,max:3,step:1});
     shorting.closest('label').hidden=noPowerPoints;
@@ -304,14 +328,23 @@ export function actorActions(env) {
   }
   function bar() {
     const node=el(doc,'div','gws-actionbar');
-    for(const [key,run] of [['receiveDamage',incomingDamage],['traitRoll',()=>trait({die:4,modifier:0,untrained:true},{label:label('untrained'),labelText:()=>label('untrained'),untrained:true})],['runningRoll',running],['rest',rest],['fatigueGain',()=>replaceSheet(applyFatigue(getSheet()))]])
-      node.append(button( () => label(key),run,!canEdit()));
-    node.append(button( () => t('common.actions'),()=>{
+    const roll=button( () => label('traitRoll'),()=>trait({die:4,modifier:0,untrained:true},{label:label('untrained'),labelText:()=>label('untrained'),untrained:true}),!canEdit());
+    roll.classList.add('gws-action-primary'); roll.prepend(icon(doc,'dice'));
+    const damage=button( () => label('receiveDamage'),incomingDamage,!canEdit());
+    damage.classList.add('gws-action-danger'); damage.prepend(icon(doc,'wound'));
+    const more=button( () => t('common.actions'),()=>{
       const ui=pane( () => t('common.actions'));
-      for(const key of ['support','test','heal','stabilize'])ui.body.insertBefore(button( () => t(`target.${key}`),async()=>{await ui.node.close();if(!ui.node.isConnected)targets[key]();},!canEdit()),ui.body.lastChild);
-      ui.body.insertBefore(button( () => t('rules.recover.natural'),async()=>{await ui.node.close();if(!ui.node.isConnected)recovery('natural');},!canEdit()),ui.body.lastChild);
-      if(getRules().noPowerPoints!==true)ui.body.insertBefore(button( () => t('rules.deviceAdjustments'),async()=>{await ui.node.close();if(!ui.node.isConnected && getRules().noPowerPoints!==true)deviceAdjustments();},!canEdit()),ui.body.lastChild);
-    },!canEdit()));
+      ui.form.classList.add('gws-action-options');
+      const choice=(text,run)=>ui.form.append(button(text,async()=>{
+        await ui.node.close(); if(!ui.node.isConnected && canEdit())await run();
+      },!canEdit()));
+      for(const [key,run] of [['runningRoll',running],['rest',rest],['fatigueGain',()=>replaceSheet(applyFatigue(getSheet()))]])choice( () => label(key),run);
+      for(const key of ['support','test','heal','stabilize'])choice( () => t(`target.${key}`),()=>targets[key]());
+      choice( () => t('rules.recover.natural'),()=>recovery('natural'));
+      if(getRules().noPowerPoints!==true)choice( () => t('rules.deviceAdjustments'),()=>{if(getRules().noPowerPoints!==true)return deviceAdjustments();});
+    },!canEdit());
+    more.classList.add('gws-action-menu'); more.setAttribute('aria-haspopup','dialog');
+    node.append(roll,damage,more);
     return node;
   }
   return {attribute,skill,trait,recovery,escape,damage,incomingDamage,attack,cast,maintain,end,rest,running,bar};

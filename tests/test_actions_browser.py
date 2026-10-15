@@ -1,6 +1,7 @@
 """Exercise actor actions with real SDK modals and deterministic native dice facts."""
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+import os
 from pathlib import Path
 import sys
 from threading import Thread
@@ -9,9 +10,19 @@ from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright
 
 
+def find_host_root(source):
+    override = os.environ.get('GRAVEWRIGHT_TEST_HOST_ROOT')
+    candidates = [Path(override)] if override else source.parents
+    for candidate in candidates:
+        root = candidate.resolve()
+        if (root / 'manage.py').is_file() and (root / 'gravewright').is_dir():
+            return root
+    raise RuntimeError('Set GRAVEWRIGHT_TEST_HOST_ROOT to a Gravewright checkout containing manage.py and gravewright/.')
+
+
 def main():
     source = Path(__file__).resolve().parents[1]
-    host = source.parents[1]
+    host = find_host_root(source)
     sys.path.insert(0, str(host))
     from gravewright.dice.engine import evaluate
     modules = host / 'gravewright/modules/static/gravewright_modules'
@@ -64,24 +75,25 @@ def main():
               const click=async(scope,key)=>{const button=find(scope,key);if(!button)throw Error('No button '+key);button.click();await until(()=>!button.isConnected||button.getAttribute('aria-busy')!=='true',key);return button;};
               let abort,wrapper,view,stats,scenario,failRoll,failSave,loseSave,holdRoll,mounted,settings;
               const receipts=new Map(),saveReceipts=new Map();
-              async function setup({shaken=false,power=false,healing=false,device=false,tableSettings={},ruleOverrides,points=10,currency='',woundCapacity,arcanePools=[]}={}){
+              async function setup({shaken=false,power=false,healing=false,device=false,canEdit=true,tableSettings={},ruleOverrides,points=10,currency='',woundCapacity,arcanePools=[],skillRows,encumbered=false,restrained=false}={}){
                 abort?.abort();wrapper?.remove();await tick();
                 abort=new AbortController();const data=createSheet();data.status.shaken=shaken;data.resources.bennies=3;
                 if(power || healing || device)data.skills=[{id:'owned-skill',type:'skill',name:'User authored skill',data:{...createItemSheet('skill'),die:healing?12:8,modifier:0,attribute:'smarts',role:healing?'healing':'arcane'}}];
+                if(skillRows)data.skills=structuredClone(skillRows);data.load.encumbered=encumbered;data.status.entangled=restrained;
                 if(power || device){data.resources.powerPoints=points;data.resources.powerPointsMax=10;data.powers=[{id:'owned-power',sourceId:'library-power',type:'power',name:'User authored power',data:{...createItemSheet('power'),powerPoints:2,durationRounds:3,skillId:device?'':'owned-skill'}}];}
                 data.resources.currency=currency;data.arcanePools=structuredClone(arcanePools);
                 if(ruleOverrides!==undefined)data.rules=structuredClone(ruleOverrides);
                 if(woundCapacity!==undefined)data.profile.woundCapacity=woundCapacity;
                 if(device)data.inventory=[{id:'owned-device',type:'arcane-device',name:'User authored device',data:{...createItemSheet('arcane-device'),powerPoints:0,powerPointsMax:10,allocatedPowerPoints:0}}];
                 if(healing)data.resources.wounds=3;
-                view={id:'actor',name:'A'.repeat(120),actorType:'character',type:'character',canEdit:true,version:1,sheetVersion:1,data};
+                view={id:'actor',name:'A'.repeat(120),actorType:'character',type:'character',canEdit,version:1,sheetVersion:1,data};
                 stats={rollCalls:0,published:0,saves:0,successfulSaves:0,requestIds:[],saveIds:[],rollExpressions:[],reads:0,payloads:[]};receipts.clear();saveReceipts.clear();scenario='success';failRoll=false;failSave=false;loseSave=false;holdRoll=null;
                 const linked=new Set(),life={signal:abort.signal,check(){if(abort.signal.aborted)throw Error('stale_context');},link(fn){linked.add(fn);return()=>linked.delete(fn);}};
                 const ui=createUiApi(life,{}, {mountModal,document});
                 const call=async(domain,method,payload,options={})=>{
                   life.check();
                   if(domain==='actors'&&method==='sheet'){stats.reads++;return structuredClone(view);}
-                  if(domain==='actors'&&method==='state')return {actors:[{id:view.id,name:view.name,canOpen:true,canEdit:true,version:view.version,sheetVersion:view.sheetVersion}]};
+                  if(domain==='actors'&&method==='state')return {actors:[{id:view.id,name:view.name,canOpen:true,canEdit:view.canEdit,version:view.version,sheetVersion:view.sheetVersion}]};
                   if(domain==='actors'&&method==='saveSheet'){
                     stats.saves++;stats.payloads.push(structuredClone(payload));stats.saveIds.push(options.requestId);
                     if(!options.requestId)throw Error('Actor autosave omitted native receipt');
@@ -104,7 +116,7 @@ def main():
                   if(domain==='items'&&method==='state')return {items:[]};
                   throw Error('Unexpected SDK operation '+domain+'.'+method);
                 };
-                const api=createDomainApi(call,{ui,events:{on:()=>()=>{}},i18n:{t}});
+                const api=createDomainApi(call,{ui,events:{on:()=>()=>{}},i18n:{t,get locale(){return language;}}});
                 wrapper=document.createElement('section');wrapper.className='gw-window';const root=document.createElement('div');wrapper.append(root);document.body.append(wrapper);
                 const listeners=new Set();settings={current:{schemaVersion:1,currency:{enabled:true,label:''},rules:{noPowerPoints:false,woundCap:false},...structuredClone(tableSettings)},listeners,
                   subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},update(value){settings.current=structuredClone(value);for(const fn of listeners)fn(settings.current);}};
@@ -117,15 +129,112 @@ def main():
                 const control=[...row.querySelectorAll('button')].find(button=>button.getAttribute('aria-label')===t('rules.roll'));
                 if(!control)throw Error('Missing native power activation action');control.click();await until(()=>document.querySelector('.gws-modal'),'power modal');return document.querySelector('.gws-modal');
               }
-              let root=await setup();
+              async function openAction(root,key){
+                await click(root.querySelector('.gws-actionbar'),'common.actions');
+                const menu=document.querySelector('.gws-modal');
+                if(!menu)throw Error('Actions did not open a native modal');
+                await click(menu,key);
+                if(key!=='rules.fatigueGain')await until(()=>document.querySelector('.gws-modal')&&document.querySelector('.gws-modal')!==menu,'open '+key);
+                return document.querySelector('.gws-modal');
+              }
+              let root=await setup({woundCapacity:5});
+              const authoredSkills=['Zebra','Ñandú','Nube','Águia 10','Águia 2','Nandú'].map((name,index)=>({id:'skill-'+index,type:'skill',name,data:{...createItemSheet('skill'),die:8,modifier:1,attribute:'smarts'}}));
+              root=await setup({skillRows:authoredSkills,encumbered:true});
+              const visibleSkills=()=>[...root.querySelectorAll('.gws-table-skills tbody [data-entry-id]')].map(row=>row.querySelector('.gws-link').textContent);
+              if(visibleSkills().join('|')!=='Águia 2|Águia 10|Ñandú|Nandú|Nube|Zebra'||stats.saves)throw Error('Skill display is not alphabetical or sorting saved actor data');
+              for(const locale of ['en','pt-BR']){changeLanguage(locale);for(const width of [390,320]){
+                wrapper.style.width=width+'px';await tick();const skillsTable=root.querySelector('.gws-table-skills'),tableBox=skillsTable.getBoundingClientRect();
+                if(skillsTable.scrollWidth>skillsTable.clientWidth+1)throw Error('Narrow skill list requires horizontal scrolling at '+width);
+                for(const row of skillsTable.querySelectorAll('[data-entry-id]')){if(row.querySelector('.gws-entry-actions').getBoundingClientRect().height>40)throw Error('Narrow skill row stacks its three actions vertically');for(const control of row.querySelectorAll('input,select,button')){
+                  const box=control.getBoundingClientRect();if(box.width<1||box.left<tableBox.left-1||box.right>tableBox.right+1)throw Error('Narrow skill control is clipped at '+width+': '+control.getAttribute('aria-label'));
+                }}
+                if([...skillsTable.querySelectorAll('.gws-skill-field-label')].some(label=>!label.getClientRects().length||label.scrollWidth>label.clientWidth+1))throw Error('Narrow skill list has unlabeled or clipped fields at '+width+' in '+locale);
+              }}wrapper.style.width='';changeLanguage('en');
+              const linkedAttribute=root.querySelector('[data-gws-skill-attribute="skill-0"]');linkedAttribute.value='agility';linkedAttribute.focus();linkedAttribute.dispatchEvent(new Event('change',{bubbles:true}));await mounted.flush();
+              if(view.data.skills.map(row=>row.name).join('|')!==authoredSkills.map(row=>row.name).join('|')||view.data.skills[0].data.attribute!=='agility'||view.data.skills[0].data.die!==8||view.data.skills[0].data.modifier!==1||document.activeElement!==linkedAttribute)throw Error('Linked attribute edit changed the die, modifier, stored order or keyboard focus');
+              const sortSaveCount=stats.saves;changeLanguage('es');
+              if(visibleSkills().join('|')!=='Águia 2|Águia 10|Nandú|Nube|Ñandú|Zebra'||stats.saves!==sortSaveCount||document.activeElement!==linkedAttribute||linkedAttribute.value!=='agility'||linkedAttribute.options[1].textContent!==t('attribute.agility'))throw Error('Locale sorting lost focus/linked attribute or wrote actor data');
+              const skillRow=root.querySelector('[data-entry-id="skill-0"]');skillRow.querySelector('[aria-label="'+t('rules.roll')+'"]').click();await until(()=>document.querySelector('.gws-rule-modal'),'linked skill roll');
+              let skillModal=document.querySelector('.gws-rule-modal');find(skillModal,'rules.roll').focus();await click(skillModal,'rules.roll');
+              if(document.activeElement!==find(skillModal,'rules.rerollBenny'))throw Error('Completed skill roll did not move focus from hidden Roll to its enabled reroll action');
+              if(!stats.rollExpressions[0].includes('d8')||!stats.rollExpressions[0].endsWith('-1')||view.data.skills[0].data.die!==8)throw Error('Skill roll used its stale attribute or replaced its independent skill die');await skillModal.close();
+              const relinkedAttribute=root.querySelector('[data-gws-skill-attribute="skill-0"]');relinkedAttribute.value='smarts';relinkedAttribute.dispatchEvent(new Event('change',{bubbles:true}));await mounted.flush();
+              root.querySelector('[data-entry-id="skill-0"] [aria-label="'+t('rules.roll')+'"]').click();await until(()=>document.querySelector('.gws-rule-modal'),'relinked skill roll');skillModal=document.querySelector('.gws-rule-modal');await click(skillModal,'rules.roll');
+              if(!stats.rollExpressions.at(-1).endsWith('+1'))throw Error('Changing linked attribute did not remove the existing Agility encumbrance penalty');await skillModal.close();changeLanguage('en');
+              root=await setup({skillRows:authoredSkills,canEdit:false});
+              if([...root.querySelectorAll('[data-gws-skill-attribute]')].some(control=>!control.disabled))throw Error('Read-only sheet exposes an editable skill attribute selector');
+              const athleticsSkills=authoredSkills.map(row=>({...row,data:{...row.data,role:'athletics'}}));
+              root=await setup({skillRows:athleticsSkills,restrained:true});await click(root,'rules.escape');
+              const escapeModal=document.querySelector('.gws-rule-modal'),escapeTrait=escapeModal.querySelector('[data-gws-rule=trait]');
+              if(escapeTrait.options[0].value!=='strength'||escapeTrait.options[0].hasAttribute('data-gws-sort-name'))throw Error('Escape attribute is mixed into the skill ordering');
+              escapeTrait.value='skill-2';escapeTrait.focus();const escapeSaves=stats.saves;changeLanguage('es');
+              if(escapeTrait.options[0].value!=='strength'||escapeTrait.options[0].textContent!==t('attribute.strength')||[...escapeTrait.options].slice(1).map(option=>option.textContent).join('|')!=='Águia 2|Águia 10|Nandú|Nube|Ñandú|Zebra'||escapeTrait.value!=='skill-2'||document.activeElement!==escapeTrait||stats.saves!==escapeSaves)throw Error('Translated Escape did not keep Strength fixed and alphabetize only skills while preserving focus');
+              await click(escapeModal,'rules.roll');if(!stats.rollExpressions[0].includes('d8')||!stats.rollExpressions[0].endsWith('+1'))throw Error('Translated Escape rolled another trait after sorting');await escapeModal.close();changeLanguage('en');
+              root=await setup({woundCapacity:5});
+              const pips=key=>[...root.querySelectorAll('[data-resource='+key+'] .gws-pip')];
+              if(root.querySelector('.gws-brand')||!root.querySelector('.gws-name input'))throw Error('Actor identity still includes the system brand or lacks its editable name');
+              if(pips('wounds').map(control=>control.textContent).join()!=='−1,−2,−3,−3,−3'||pips('fatigue').map(control=>control.textContent).join()!=='−1,−2')throw Error('Resource controls do not show their penalty levels');
+              if(pips('wounds').some((control,index)=>control.getAttribute('aria-label')!==t('resource.wounds')+' '+(index+1)||control.getAttribute('aria-pressed')!=='false'))throw Error('Wound controls lost their actual level or initial state');
+              pips('wounds')[3].click();await mounted.flush();
+              if(view.data.resources.wounds!==4||pips('wounds').filter(control=>control.getAttribute('aria-pressed')==='true').length!==4||pips('wounds')[3].textContent!=='−3')throw Error('Capped wound penalty label changed the selected wound level');
+              pips('wounds')[3].click();await mounted.flush();
+              if(view.data.resources.wounds!==3||pips('wounds').filter(control=>control.getAttribute('aria-pressed')==='true').length!==3)throw Error('Clicking the active wound level did not remove its last wound');
+              pips('fatigue')[1].click();await mounted.flush();
+              if(view.data.resources.fatigue!==2||pips('fatigue').filter(control=>control.getAttribute('aria-pressed')==='true').length!==2)throw Error('Fatigue penalty control did not persist level two');
+              pips('fatigue')[1].click();await mounted.flush();
+              if(view.data.resources.fatigue!==1||pips('fatigue').filter(control=>control.getAttribute('aria-pressed')==='true').length!==1)throw Error('Clicking active fatigue did not remove its last level');
+              root=await setup({device:true});
+              const toolbar=root.querySelector('.gws-actionbar'),toolbarButtons=[...toolbar.querySelectorAll('button')];
+              const toolbarKeys=['rules.traitRoll','rules.receiveDamage','common.actions'];
+              if(toolbarButtons.length!==3||toolbarButtons.some((button,index)=>button.textContent!==t(toolbarKeys[index])))throw Error('Toolbar does not prioritize trait, damage and the secondary actions entry');
+              if(toolbarButtons[2].getAttribute('aria-haspopup')!=='dialog')throw Error('Actions does not announce its native modal');
+              const traitStyle=getComputedStyle(toolbarButtons[0]),damageStyle=getComputedStyle(toolbarButtons[1]),menuStyle=getComputedStyle(toolbarButtons[2]);
+              if(traitStyle.backgroundColor===menuStyle.backgroundColor||damageStyle.color===menuStyle.color)throw Error('Toolbar actions have no visible primary or damage distinction');
+              toolbarButtons[2].focus();await click(toolbar,'common.actions');
+              let menu=document.querySelector('.gws-modal');
+              const menuKeys=['rules.runningRoll','rules.rest','rules.fatigueGain','target.support','target.test','target.heal','target.stabilize','rules.recover.natural','rules.deviceAdjustments'];
+              if(menuKeys.some(key=>!find(menu,key)||find(menu,key).disabled))throw Error('An existing action is missing or inaccessible in the secondary actions modal');
+              const actionSaveCount=stats.saves;
+              changeLanguage('pt-BR');
+              if(menu.querySelector('h2').textContent!==t('common.actions')||toolbarButtons.some((button,index)=>button.textContent!==t(toolbarKeys[index]))||menuKeys.some(key=>!find(menu,key))||stats.saves!==actionSaveCount)throw Error('Open action menu did not translate without changing actor data');
+              window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+              await until(()=>!menu.isConnected,'actions Escape close');
+              if(document.activeElement!==find(root.querySelector('.gws-actionbar'),'common.actions'))throw Error('Closing actions did not return keyboard focus to its entry: '+document.activeElement?.outerHTML);
+              changeLanguage('en');
+              for(const [key,target]of [['target.support','support'],['target.test','test'],['target.heal','heal'],['target.stabilize','stabilize']]){
+                const opened=await openAction(root,key);
+                await until(()=>document.querySelector('[data-gws-target-action="'+target+'"]'),'secondary '+target);
+                if(document.querySelectorAll('.gws-modal').length!==1||opened?.dataset.gwsTargetAction!==target)throw Error('Secondary target action retained its actions modal');
+                await opened.close();await until(()=>!opened.isConnected,'close secondary '+target);
+                if(document.activeElement!==find(root.querySelector('.gws-actionbar'),'common.actions'))throw Error('Closing secondary '+target+' did not return focus to Actions');
+              }
+              for(const key of ['rules.runningRoll','rules.rest','rules.recover.natural','rules.deviceAdjustments']){
+                const opened=await openAction(root,key);
+                if(!opened||document.querySelectorAll('.gws-modal').length!==1||opened.querySelector('h2').textContent!==t(key))throw Error('Secondary action did not replace the actions modal: '+key);
+                await opened.close();await until(()=>!opened.isConnected,'close '+key);
+                if(document.activeElement!==find(root.querySelector('.gws-actionbar'),'common.actions'))throw Error('Closing secondary '+key+' did not return focus to Actions');
+              }
+              if(stats.saves||stats.rollCalls)throw Error('Opening secondary actions performed a rule action');
+              await openAction(root,'rules.fatigueGain');
+              await until(()=>view.data.resources.fatigue===1,'fatigue from secondary actions');
+              if(stats.successfulSaves!==1||document.querySelector('.gws-modal'))throw Error('Secondary fatigue action did not close and persist exactly once');
+              root=await setup({canEdit:false});
+              const readOnlyActions=[...root.querySelectorAll('.gws-actionbar button')];
+              if(readOnlyActions.length!==3||readOnlyActions.some(control=>!control.disabled))throw Error('Read-only actors expose an enabled toolbar action');
+              for(const control of readOnlyActions)control.click();
+              for(const control of [...pips('wounds'),...pips('fatigue')]){if(!control.disabled)throw Error('Read-only actor exposes enabled resource controls');control.click();}
+              root.querySelector('[data-attribute=agility] .gws-die').click();await tick();
+              if(document.querySelector('.gws-modal')||stats.saves||stats.rollCalls||view.data.resources.fatigue)throw Error('Read-only toolbar changed actor data or opened an action');
+              root=await setup();
               root.querySelector('[data-attribute=agility] .gws-die').click();await until(()=>document.querySelector('.gws-rule-grid'),'trait modal');
               let modal=document.querySelector('.gws-modal');failRoll=true;await click(modal,'rules.roll');
               if(modal.querySelector('.gws-rule-result').textContent)throw Error('Failed transport reported a completed roll');
               await click(modal,'rules.roll');if(stats.published!==1||stats.rollCalls!==2||new Set(stats.requestIds).size!==1)throw Error('Retry published another roll');
               await modal.close();await tick();
               root=await setup();scenario='critical';root.querySelector('[data-attribute=agility] .gws-die').click();await until(()=>document.querySelector('.gws-rule-grid'),'critical modal');
-              modal=document.querySelector('.gws-modal');await click(modal,'rules.roll');
+              modal=document.querySelector('.gws-modal');find(modal,'rules.roll').focus();await click(modal,'rules.roll');
               if(!find(modal,'rules.rerollBenny').disabled||view.data.resources.bennies!==3)throw Error('Critical failure reroll is enabled');
+              if(document.activeElement!==find(modal,'common.done'))throw Error('Critical result did not focus Done when reroll is unavailable');
               await modal.close();await tick();
               root=await setup();root.querySelector('[data-attribute=agility] .gws-die').click();await until(()=>document.querySelector('.gws-rule-grid'),'pending modal');
               modal=document.querySelector('.gws-modal');let release;holdRoll={promise:new Promise(resolve=>release=resolve)};
@@ -212,7 +321,7 @@ def main():
               pendingConcept=root.querySelector('[data-gws-path="identity.concept"]');
               if(view.data.identity.concept!=='Unsaved local edit'||pendingConcept.value!=='Unsaved local edit'||document.activeElement!==pendingConcept||pendingConcept.selectionStart!==4||pendingConcept.selectionEnd!==9)throw Error('Settings refresh lost draft, focus or text selection');
               if(Object.hasOwn(view.data.rules||{},'noPowerPoints')||Object.hasOwn(view.data.rules||{},'woundCap'))throw Error('Inherited rules were materialized in the saved actor');
-              await click(root,'rules.rest');modal=document.querySelector('.gws-modal');
+              modal=await openAction(root,'rules.rest');
               if(!find(modal,'rules.recoverPP').hidden||!find(modal,'rules.recoverPP').disabled||!find(modal,'rules.recoverPPBenny').hidden||!find(modal,'rules.recoverPPBenny').disabled||!modal.querySelector('[data-gws-rule=pool]').closest('label').hidden)throw Error('No PP rest exposes spending or recovery controls');
               const noPPSaves=stats.saves;find(modal,'rules.recoverPPBenny').click();await tick();
               if(stats.saves!==noPPSaves||view.data.resources.bennies!==3||view.data.resources.powerPoints!==10)throw Error('No PP rest spent a Benny or altered the saved reserve');await modal.close();
@@ -240,7 +349,7 @@ def main():
               await until(()=>!root.querySelector('[data-gws-path="resources.powerPoints"]').closest('section').hidden,'live rule refresh');
               if(stats.saves!==beforeSettingsSaves||view.data.resources.powerPoints!==8||view.data.resources.currency!=='17.5'||view.data.arcanePools[0].current!==3)throw Error('Live rule refresh rewrote actor resources');
               abort.abort();if(settings.listeners.size)throw Error('Sheet retained its settings subscription after disposal');
-              root=await setup({power:true,points:4});await click(root,'rules.rest');modal=document.querySelector('.gws-modal');
+              root=await setup({power:true,points:4});modal=await openAction(root,'rules.rest');
               settings.update({...settings.current,rules:{noPowerPoints:true,woundCap:false}});
               await click(modal,'rules.recoverPPBenny');await click(modal,'rules.recoverPP');
               if(stats.saves||view.data.resources.bennies!==3||view.data.resources.powerPoints!==4)throw Error('Open rest modal spent resources after table switched to No PP');await modal.close();
@@ -258,7 +367,9 @@ def main():
               find(modal,'rules.roll').click();await until(()=>stats.rollCalls===1,'language roll pending');const rollBefore=stats.rollCalls,saveBefore=stats.saves,pendingFocus=document.activeElement;
               changeLanguage('es');
               if(modal.querySelector('h2').textContent!==t('attribute.agility')||find(modal,'rules.roll').getAttribute('aria-busy')!=='true'||modal.querySelector('[data-gws-rule=target]')!==difficulty||difficulty.value!=='7'||document.activeElement!==pendingFocus||stats.rollCalls!==rollBefore||stats.saves!==saveBefore)throw Error('Language change recreated or restarted a pending actor action');
+              find(modal,'common.done').focus();
               release();await until(()=>!find(modal,'rules.roll').getAttribute('aria-busy'),'translated pending completion');
+              if(document.activeElement!==find(modal,'common.done'))throw Error('Completed action stole focus from another control already chosen while the roll was pending');
               const completedSpanish=modal.querySelector('.gws-rule-result').textContent;changeLanguage('en');if(modal.querySelector('.gws-rule-result').textContent===completedSpanish)throw Error('Completed outcome did not translate');await modal.close();
               root=await setup({device:true});await click(root,'sheet.equipment');
               root.querySelector('[data-entry-id=owned-device] [aria-label="'+t('common.edit')+'"]').click();await until(()=>document.querySelector('.gws-item-editor'),'translated owned item');modal=document.querySelector('.gws-modal');
@@ -272,7 +383,11 @@ def main():
                 castBennyRetry:true,powerPointsOnlyApply:true,castApplyRetry:true,shortingCriticalLock:true,ownTargetHydration:true,
                 deviceContactRetry:true,ownedDeviceBindings:true,autosaveLostResponse:true,tableCurrency:true,inheritedRules:true,triStateOverrides:true,
                 noPPReservePreservation:true,noPPRestChargeGuard:true,settingsDirtyDraftFocus:true,settingsUnsubscribe:true,tableWoundCap:true,
-                languageDraftFocus:true,languagePendingRoll:true,languageOwnedItem:true,languageUnsubscribe:true,noDialog:true};
+                languageDraftFocus:true,languagePendingRoll:true,languageOwnedItem:true,languageUnsubscribe:true,
+                toolbarHierarchy:true,secondaryActionsReachable:true,secondaryModalReplacement:true,secondaryFatigueOnce:true,
+                actionMenuTranslation:true,actionMenuEscapeFocus:true,readOnlyActions:true,
+                alphabeticalSkillRows:true,localeSkillOrder:true,linkedSkillAttribute:true,linkedSkillPenalty:true,independentSkillDie:true,skillFocus:true,storedSkillOrder:true,escapeAttributeOrder:true,narrowSkillControls:true,resultActionFocus:true,resultDoneFocus:true,pendingFocusPreserved:true,
+                penaltyLabels:true,extendedWoundLevels:true,resourceTogglePersistence:true,actorIdentity:true,noDialog:true};
             }""")
             print(result)
             assert not errors, errors

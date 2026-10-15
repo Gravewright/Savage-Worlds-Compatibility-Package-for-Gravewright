@@ -1,6 +1,7 @@
 """Target actions through actual SDK adapters, native modals and dice facts."""
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+import os
 from pathlib import Path
 import sys
 from threading import Thread
@@ -11,7 +12,11 @@ from playwright.sync_api import sync_playwright
 
 def main():
     source = Path(__file__).resolve().parents[1]
-    host = source.parents[1]
+    override = os.environ.get('GRAVEWRIGHT_TEST_HOST_ROOT')
+    candidates = [Path(override)] if override else source.parents
+    host = next((path.resolve() for path in candidates if (path / 'manage.py').is_file() and (path / 'gravewright').is_dir()), None)
+    if host is None:
+        raise RuntimeError('Set GRAVEWRIGHT_TEST_HOST_ROOT to a Gravewright checkout containing manage.py and gravewright/.')
     sys.path.insert(0, str(host))
     from gravewright.dice.engine import evaluate
     modules = host / 'gravewright/modules/static/gravewright_modules'

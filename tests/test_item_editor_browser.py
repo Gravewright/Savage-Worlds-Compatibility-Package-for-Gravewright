@@ -30,11 +30,39 @@ def main():
               let language='en';const languageListeners=new Set();
               const t=(key,params={})=>Object.entries(params).reduce((s,[k,v])=>s.replaceAll('{'+k+'}',v),locales[language][key]||key);
               const changeLanguage=locale=>{language=locale;for(const callback of languageListeners)callback();};
+              const named=[{id:'z',name:'Zeta'},{id:'10',name:'Árvore 10'},{id:'2',name:'árvore 2'}],device=createItemSheet('arcane-device');
+              Object.assign(device,{poolId:'z',skillId:'10',powerIds:['z','2'],modifiers:[{target:'attribute.strength',mode:'add',value:1,enabled:true}]});
+              const originalDevice=JSON.stringify(device), originalNames=JSON.stringify(named);
+              const ordered=itemEditor({doc:document,t,getLocale:()=>language,type:'arcane-device',data:()=>device,name:()=> 'Device',canEdit:true,skills:named,pools:named,powers:named,changed:()=>{throw Error('Ordering wrote a document');}});
+              document.body.append(ordered);
+              ordered.querySelector('[data-gws-item-tab=details]').click();await Promise.resolve();
+              for(const locale of ['en','pt-BR','es']){
+                language=locale;ordered.refreshLanguage();
+                const collator=new Intl.Collator(locale,{usage:'sort',sensitivity:'base',numeric:true});
+                for(const selector of ['[data-gws-item-field=poolId]','[data-gws-item-field=skillId]','.gws-modifier-row select:first-of-type']){
+                  const select=ordered.querySelector(selector),selected=select.value,labels=[...select.options].filter(option=>option.value).map(option=>option.textContent);
+                  if(JSON.stringify(labels)!==JSON.stringify([...labels].sort(collator.compare)))throw Error('Item choices unsorted in '+locale+': '+selector);
+                  select.focus();ordered.refreshLanguage();if(select.value!==selected||document.activeElement!==select)throw Error('Item sorting lost selection or focus');
+                }
+                const labels=[...ordered.querySelectorAll('.gws-device-powers label span')].map(node=>node.textContent);
+                if(JSON.stringify(labels)!==JSON.stringify([...labels].sort(collator.compare)))throw Error('Device powers unsorted');
+                if(JSON.stringify(device)!==originalDevice||JSON.stringify(named)!==originalNames)throw Error('Ordering changed authored arrays');
+              }
+              ordered.remove();language='en';
               for(const {id} of ITEM_TYPES){
                 const data=createItemSheet(id),ed=itemEditor({doc:document,t,type:id,data:()=>data,name:()=>'',canEdit:true,changed:(k,v)=>data[k]=v});
                 document.body.append(ed);ed.querySelector('[data-gws-item-tab=details]').click();await Promise.resolve();
                 if(ed.querySelector('[data-gws-item-tab=details]').getAttribute('aria-selected')!=='true')throw Error('Cannot browse blank template '+id);
                 ed.remove();
+                const readonly=itemEditor({doc:document,t,type:id,data:()=>data,name:()=> 'Read only '+id,canEdit:false,changed:()=>{throw Error('Read only item changed');}});
+                document.body.append(readonly);
+                if(readonly.querySelector('.gws-item-reading').hidden)throw Error('Read only item did not open in reading mode: '+id);
+                readonly.querySelector('[data-gws-item-tab=details]').click();await Promise.resolve();
+                for(const input of readonly.querySelectorAll('input,select,textarea')){
+                  if(input.matches('select,[type=checkbox]')?!input.disabled:!input.readOnly)throw Error('Editable read only control: '+id);
+                  if(input.matches('textarea')&&input.disabled)throw Error('Read only authored text prevents copying: '+id);
+                }
+                readonly.remove();
               }
               const data=createItemSheet('power');let name='Custom power';
               const ed=itemEditor({doc:document,t,type:'power',data:()=>data,name:()=>name,canEdit:true,onNameChange:v=>name=v,changed:(k,v)=>data[k]=v});document.body.append(ed);

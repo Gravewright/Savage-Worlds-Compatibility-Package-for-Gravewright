@@ -2,6 +2,24 @@
 export const DOCUMENT_NAME_MAX = 120;
 
 const translations = new WeakMap();
+const nameOrders = new WeakMap();
+
+/** Reorder visible rows/options in place, retaining authored data and focus. */
+export function bindNameOrder(container, getLocale) {
+  const refresh = () => {
+    const children = [...container.children], named = children.filter(node => node.hasAttribute('data-gws-sort-name'));
+    const collator = new Intl.Collator(getLocale?.() || 'en', {usage: 'sort', sensitivity: 'base', numeric: true});
+    named.sort((left, right) => collator.compare(left.dataset.gwsSortName, right.dataset.gwsSortName));
+    let index = 0;
+    const ordered = children.map(node => node.hasAttribute('data-gws-sort-name') ? named[index++] : node);
+    if (ordered.every((node, position) => node === children[position])) return;
+    const value = container.value, focused = container.ownerDocument.activeElement;
+    container.append(...ordered);
+    if (value !== undefined) container.value = value;
+    if (container.contains(focused)) focused.focus({preventScroll: true});
+  };
+  nameOrders.set(container, refresh); refresh(); return container;
+}
 
 /** Bind only package-authored labels; document names and player text stay intact. */
 export function bindTranslation(node, property, getText) {
@@ -29,13 +47,16 @@ export function bindTranslation(node, property, getText) {
 
 /** Refresh existing controls without changing values, focus, or pending actions. */
 export function refreshTranslations(root) {
-  for (const node of [root, ...root.querySelectorAll('*')]) {
+  const nodes = [root, ...root.querySelectorAll('*')];
+  for (const node of nodes) {
     for (const [property, binding] of translations.get(node) || []) {
       // A later explicit write supersedes a status or result label.
       if (property === 'textContent' && binding.textNode && binding.textNode.parentNode !== node) {translations.get(node).delete(property); continue;}
       bindTranslation(node, property, binding.getText);
     }
   }
+  // Named choices must compare their refreshed labels when the language changes.
+  for (const node of nodes) nameOrders.get(node)?.();
 }
 
 export function el(doc, tag, className, text) {
@@ -67,7 +88,7 @@ const PATHS = {
   battery: ['M3 6h16v12H3z', 'M19 10h3v4h-3', 'M7 12h8'],
   shield: ['M12 2 3 6v6c0 6 9 10 9 10s9-4 9-10V6z', 'M12 6v12'],
   heart: ['M12 21 3 12C-2 3 8-1 12 7c4-8 14-4 9 5Z'],
-  boot: ['M8 2h7v10l6 5v4H3v-5l5-4z', 'M8 7h7M3 17h8'],
+  boot: ['M3 3h8v8l3 3 5 1a3 3 0 0 1 2 3v3H3Z', 'M3 7h8M3 18h18M11 11l-3 2M14 14l-3 2'],
   sword: ['m17 2 5 0 0 5-12 12-5-5z', 'm3 14 7 7', 'm2 22 5-5'],
   bag: ['M5 7h14v15H5z', 'M8 7V3h8v4', 'M5 12h14'],
   star: ['m12 2 3 6 7 1-5 5 1 8-6-4-6 4 1-8-5-5 7-1Z'],

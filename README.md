@@ -4,7 +4,7 @@
 
 [Português](README.pt-BR.md)
 
-Release **`gravewright.savage-worlds` 0.1.1** for Gravewright VTT 0.2.3,
+**`gravewright.savage-worlds` 0.1.2** for Gravewright VTT 0.2.3,
 reviewed against the revised 2026 Brazilian SWADE edition. The horizontal header, five tabs and VTT
 palette remain. System models, UI and numerical rules live in this project;
 the host supplies only generic document, dice, card, combat and modal contracts.
@@ -24,14 +24,23 @@ This game references the Savage Worlds game system, available from Pinnacle Ente
 Works with the published [Gravewright **0.2.3**](https://github.com/Gravewright/gravewright/releases/tag/v0.2.3),
 SDK **1.0.0** and its translation API. All runtime code belongs to this browser system.
 
-Download the system ZIP from the [0.1.1 release](https://github.com/Gravewright/Savage-Worlds-Compatibility-Package-for-Gravewright/releases/tag/v0.1.1),
-or install it through the signed Gravewright Marketplace under **Systems**.
+Install from the signed Gravewright Marketplace under **Systems**, or download
+the ZIP and SHA-256 sidecar from the
+[0.1.2 release](https://github.com/Gravewright/Savage-Worlds-Compatibility-Package-for-Gravewright/releases/tag/v0.1.2).
+Build this source with `python scripts/build.py`.
 
-1. Install `dist/gravewright-savage-worlds-0.1.1.zip` under **Systems**.
-2. Select **Savage Worlds Compatibility Package for Gravewright 0.1.1** for the
+1. Install `dist/gravewright-savage-worlds-0.1.2.zip` under **Systems**.
+2. Select **Savage Worlds Compatibility Package for Gravewright 0.1.2** for the
    table. Existing tables must explicitly select the new package version.
 3. As GM, open **Extensions → Savage Worlds → Customize** and select or create
    the table's native action deck.
+
+Unpublished local review builds are consolidated into this release. If another
+local 0.1.2 is already installed, first switch affected tables to another
+installed version, remove that local build with native package management, then
+install the public 0.1.2. The host preserves immutable ID/version pairs and will
+reject different bytes for an installed pair. Higher local review versions need
+manual selection of 0.1.2 rather than an automatic update.
 
 One system package contains sheets, item templates, settings, translations,
 card artwork and duration automation. Package ID, sheet data and table settings
@@ -45,6 +54,70 @@ sheet data, settings and authored content remain in their system namespace.
 
 Builds do not install production packages or edit `.env`. The GM advances combat
 through this package's tracker using the host's existing permissions.
+
+## Sheet spacing and legibility
+
+All character, NPC and thirteen item templates use the same fixed spacing scale
+as the host: 0, 1, 2, 4, 8, 12, 16, 20, 24, 28, 32, 40, 48, 56 and 64px.
+Radii use 4, 8, 12 and 16px, plus pill and circle shapes. These tokens are scoped
+to the package so the published VTT 0.2.3 renders them independently of newer
+host styles. Interface text is at least 12px; geometry specific to a component
+keeps local dimensions.
+
+Attribute cards and collection panels follow their content instead of stretching
+to match a taller neighbour. Headers, empty collections and text editors use less
+vertical space. Conditions occupy a separate strip. Textareas remain resizable and scroll long authored content;
+item facts wrap inside narrow windows. No sheet data or numerical rules change.
+
+The actor header gives the name its own space; system branding remains in the
+footer. Pace uses a side-view boot icon. Wound and Fatigue controls display their
+base penalties, with extra wound slots retaining the existing maximum penalty
+of −3 and their individual accessible level labels. Attribute columns and empty
+collections avoid nested frames. The action bar prioritizes a trait test and
+keeps damage accessible, while running, rest, fatigue and the other actions open
+through the existing native **Actions** modal. Permissions, saves and rule
+calculations use their existing handlers.
+
+### Roll windows and skills
+
+Rule and roll windows start at the height their controls require and group fields
+and action buttons more closely. They retain native movement, resizing, focus,
+Escape and smaller-screen scrolling, with interface text of at least 12px.
+
+Skill tables and skill choices sort alphabetically by their displayed name using
+the active language. Authored names remain unchanged, and sorting does not
+rearrange saved collections. Each skill row exposes its linked attribute selector.
+Changing the link saves only that attribute: the skill keeps its own die and
+modifier. Subsequent rolls use the current link for applicable attribute effects
+and penalties, including when the skill was edited without reopening the sheet.
+In narrow sections, each skill groups its labelled controls below its name and
+actions. After a roll, focus follows the next available action when the original
+button is hidden or disabled.
+
+The Playwright density scenario opens every registered document type and every
+tab with empty, populated and long synthetic content at desktop, intermediate
+and narrow widths. It also checks embedded item editors and reading previews.
+Run `python tests/e2e/sheet_density.py --help` for isolated host, browser,
+archive and output options.
+
+### Items and collections
+
+All thirteen item types use compact headers and detail groups. Empty descriptions
+and notes start small; long text and controls scroll within the viewport while
+native closing, movement and resizing remain available. Embedded editors and
+reading previews use the same fields without repeating header facts in the
+summary. Interface text remains at least 12px.
+
+Inventory, features, powers, equipment and library rows sort by their displayed
+name in the active language. Named pool, skill, modifier and power choices follow
+the same order, keeping current selections, drafts, focus and checked powers.
+Presentation sorting never rearranges saved collections. Skill items retain
+their linked attribute selector, independent die and modifier.
+
+The native item directory and compendium browser belong to Gravewright. Their
+source improvements are separate from this system ZIP; the package continues to
+work on the published VTT 0.2.3 without a host upgrade. No catalog, rulebook text
+or authored content is added or changed.
 
 ## Languages through the official Translator
 
@@ -169,15 +242,16 @@ it is excluded from the current release and is not needed to run the system.
 
 ```sh
 npm test
+node --test scripts/cards/test_decks.mjs
 python -m unittest discover -s tests -p "test_package.py"
 python tests/test_item_editor_browser.py
 python tests/test_modal_browser.py
 python tests/test_actions_browser.py
 python tests/test_customization_browser.py
 python tests/e2e/languages.py
-python tests/run_host_tests.py
 python scripts/build.py
 python scripts/validate_package.py
+python tests/run_host_tests.py
 ```
 
 Suites in `tests/e2e` install actual ZIPs into disposable databases, media and

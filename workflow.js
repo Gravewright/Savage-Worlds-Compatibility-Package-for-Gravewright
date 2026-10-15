@@ -3,6 +3,12 @@ export function searchText(value) {
   return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase();
 }
 
+/** Presentation order never changes the actor's persisted collection. */
+export function alphabeticalRows(rows, locale = 'en') {
+  const collator = new Intl.Collator(locale, {usage: 'sort', sensitivity: 'base', numeric: true});
+  return [...rows].sort((left, right) => collator.compare(left.name || '', right.name || ''));
+}
+
 /** A retry completes the same creation/copy instead of creating duplicates. */
 export function createItemWorkflow({create, append, flush}) {
   const requestId = globalThis.crypto.randomUUID();

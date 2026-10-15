@@ -1,8 +1,8 @@
 import {ATTRIBUTES, ITEM_TYPES, RESOURCE_LIMITS, createSheet, createItemSheet, normalizeSheet, normalizeItemSheet, itemToRow, collectionForType, canonicalItemType} from './model.js';
 import {itemEditor, itemImageUrl} from './item-editor.js';
 import {createSaveQueue} from './persistence.js';
-import {DOCUMENT_NAME_MAX, el, icon, get, set, openModal, bindTranslation, refreshTranslations} from './ui.js';
-import {createItemWorkflow, createCopyWorkflow, searchText} from './workflow.js';
+import {DOCUMENT_NAME_MAX, el, icon, get, set, openModal, bindTranslation, refreshTranslations, bindNameOrder} from './ui.js';
+import {createItemWorkflow, createCopyWorkflow, searchText, alphabeticalRows} from './workflow.js';
 import {derive, validateProgressLedger,traitValue,stepTrait} from './mechanics.js';
 import {actorActions} from './actor-actions.js';
 import {applyState, spendBenny, applyFatigue, woundCapacity} from './combat.js';
@@ -108,6 +108,7 @@ export async function mountActorSheet(block, system = {}) {
   function modal(title) {
     const opener = actionSource || doc.activeElement, entryId = opener?.closest('[data-entry-id]')?.dataset.entryId;
     const label = opener?.getAttribute('aria-label') || opener?.textContent, path = opener?.dataset.gwsPath;
+    const returnToActions = opener?.classList.contains('gws-action-menu') || !!opener?.closest('.gws-action-options');
     const node = openModal(api, doc, title, signal, () => t('common.close')); modals.add(node);
     const message = el(doc, 'p', 'gws-notice gws-modal-notice'); message.setAttribute('role', 'alert'); message.hidden = true; node.append(message);
     // A conflict blocks closing the actor, but its editor may close so the
@@ -118,7 +119,7 @@ export async function mountActorSheet(block, system = {}) {
       queueMicrotask(() => {
         if (signal.aborted) return;
         const scope = entryId ? [...shell.querySelectorAll('[data-entry-id]')].find(row => row.dataset.entryId === entryId) : shell;
-        const replacement = [...scope?.querySelectorAll('button,input,select,textarea') || []].find(control => path ? control.dataset.gwsPath === path : (control.getAttribute('aria-label') || control.textContent) === label)
+        const replacement = (returnToActions ? shell.querySelector('.gws-action-menu') : [...scope?.querySelectorAll('button,input,select,textarea') || []].find(control => path ? control.dataset.gwsPath === path : (control.getAttribute('aria-label') || control.textContent) === label))
           || shell.querySelector('[role=tab][aria-selected=true]');
         if (replacement && !replacement.closest('[inert]') && !replacement.disabled) replacement.focus();
       });
@@ -143,7 +144,7 @@ export async function mountActorSheet(block, system = {}) {
     if (source) {const image = el(doc, 'img'); image.src = source; bindTranslation(image, 'alt', () => t('sheet.portrait')); portrait.append(image);}
     else portrait.append(icon(doc, 'image'), el(doc, 'span', '', () => t('sheet.uploadPortrait')));
     portrait.append(imageUpload('portrait', () => t('sheet.uploadPortrait'))); node.append(portrait);
-    const identity = el(doc, 'div', 'gws-identity'), brand = el(doc, 'div', 'gws-brand', 'SWADE');
+    const identity = el(doc, 'div', 'gws-identity');
     const nameField = field('core.name', () => t('common.name'), {className: 'gws-name', maxLength: DOCUMENT_NAME_MAX, placeholder: () => t('sheet.namePlaceholder')});
     const fields = el(doc, 'div', 'gws-identity-fields');
     for (const key of ['concept', 'rank', 'advances']) {
@@ -151,7 +152,7 @@ export async function mountActorSheet(block, system = {}) {
       if(key==='rank' && draft.calculation.automatic){const input=current.querySelector('input'),rank=derive(draft,{rules:getRules()}).rank;bindTranslation(input,'value',()=>['novice','seasoned','veteran','heroic','legendary'].includes(rank)?t(`rules.rank.${rank}`):rank);input.readOnly=true;}
       fields.append(current);
     }
-    identity.append(brand, nameField, fields); node.append(identity);
+    identity.append(nameField, fields); node.append(identity);
     const stats = el(doc, 'div', 'gws-header-stats');
     for (const [key, glyph] of [['pace', 'boot'], ['parry', 'shield'], ['toughness', 'heart']]) {
       const stat = el(doc, 'label', 'gws-stat'); stat.append(el(doc, 'span', '', () => t(`stat.${key}`)), icon(doc, glyph));
@@ -210,8 +211,9 @@ export async function mountActorSheet(block, system = {}) {
         const capacity=key==='wounds'?woundCapacity(draft):RESOURCE_LIMITS[key];
         if(capacity===0)controls.append(el(doc,'small','gws-field-hint', () => t('rules.extraWounds')));
         for (let i = 1; i <= capacity; i++) {
-          const active = draft.resources[key] >= i, pip = button('', () => {changed(`resources.${key}`, active ? i - 1 : i); render();}, !canEdit(), 'gws-pip');
-          bindTranslation(pip, 'aria-label', () => `${t(`resource.${key}`)} ${i}`); pip.setAttribute('aria-pressed', String(active)); controls.append(pip);
+          const active = draft.resources[key] >= i, pip = button(`−${Math.min(i, RESOURCE_LIMITS[key])}`, () => {changed(`resources.${key}`, active ? i - 1 : i); render();}, !canEdit(), 'gws-pip');
+          bindTranslation(pip, 'aria-label', () => `${t(`resource.${key}`)} ${i}`);
+          bindTranslation(pip, 'title', () => `${t(`resource.${key}`)} ${i}`); pip.setAttribute('aria-pressed', String(active)); controls.append(pip);
         }
       }
       row.append(controls); node.append(row);
@@ -243,7 +245,7 @@ export async function mountActorSheet(block, system = {}) {
     const node = modal( () => entry.name || t('item.untitled')), body = el(doc, 'div', 'gws-modal-body');
     body.append(el(doc, 'p', 'gws-field-hint', () => t('sheet.ownedCopyHint')));
     const row = () => draft[collection].find(candidate => candidate.id === entry.id);
-    const editor = itemEditor({doc, t, type: entry.type, data: () => row()?.data || {}, name: () => row()?.name || '', canEdit: canEdit(), signal,skills:draft.skills,pools:draft.arcanePools,powers:draft.powers,
+    const editor = itemEditor({doc, t, getLocale:()=>api.i18n.locale, type: entry.type, data: () => row()?.data || {}, name: () => row()?.name || '', canEdit: canEdit(), signal,skills:alphabeticalRows(draft.skills,api.i18n.locale),pools:draft.arcanePools,powers:draft.powers,
       onNameChange: value => updateItem(collection, entry.id, item => {item.name = value;}),
       changed: (path, value) => updateItem(collection, entry.id, item => {
         item.data[path] = value;
@@ -266,7 +268,7 @@ export async function mountActorSheet(block, system = {}) {
     const toolbar = el(doc, 'div', 'gws-toolbar'), search = el(doc, 'input'); search.type = 'search'; bindTranslation(search, 'placeholder', () => t('common.search')); bindTranslation(search, 'aria-label', () => t('common.search'));
     const filter = el(doc, 'select'); bindTranslation(filter, 'aria-label', () => t('common.type')); filter.dataset.gwsFilter = 'library';
     const all = el(doc, 'option', '', () => t('sheet.allTypes')); all.value = ''; filter.append(all);
-    for (const type of types) {const option = el(doc, 'option', '', () => t(`item.type.${type}`)); option.value = type; filter.append(option);}
+    for (const type of types) {const option = el(doc, 'option', '', () => t(`item.type.${type}`)); option.value = type; bindTranslation(option,'data-gws-sort-name',()=>t(`item.type.${type}`)); filter.append(option);} bindNameOrder(filter,()=>api.i18n.locale);
     filter.hidden = types.length < 2;
     toolbar.append(search, filter);
     const createLabel = context.role === 'gm' ? 'sheet.createItem' : 'sheet.createOwned';
@@ -277,7 +279,7 @@ export async function mountActorSheet(block, system = {}) {
     let items = []; const operations=new Map();
     function draw() {
       list.replaceChildren(); const query = searchText(search.value);
-      const selected = items.filter(item => searchText(item.name).includes(query) && (!filter.value || canonicalItemType(item.type) === filter.value));
+      const selected = alphabeticalRows(items.filter(item => searchText(item.name).includes(query) && (!filter.value || canonicalItemType(item.type) === filter.value)), api.i18n.locale);
       if (!selected.length) {
         const empty = el(doc, 'div', 'gws-empty-state'); empty.append(icon(doc, 'bag'), el(doc, 'strong', '', () => t(query || filter.value ? 'sheet.noSearchResults' : 'sheet.noNativeItems')),
           el(doc, 'p', '', () => t(query || filter.value ? 'sheet.searchHint' : 'sheet.dropHint')));
@@ -287,6 +289,7 @@ export async function mountActorSheet(block, system = {}) {
         const operation=operations.get(item.id);
         const owned = draft[collectionForType(item.type)].some(entry => entry.sourceId === item.id);
         const row = el(doc, 'div', 'gws-picker-row'); row.dataset.sourceId = item.id;
+        row.dataset.gwsSortName=item.name;
         const identity = el(doc, 'div', 'gws-picker-identity'); identity.append(el(doc, 'strong', '', item.name), el(doc, 'span', '', () => t(`item.type.${canonicalItemType(item.type)}`)));
         if (owned) identity.append(el(doc, 'small', 'gws-picker-owned', () => t('sheet.inSheet')));
         row.append(identity, button( () => t(operation?.failed?'common.retry':owned ? 'sheet.addCopy' : 'sheet.addToSheet'), async () => {
@@ -300,6 +303,7 @@ export async function mountActorSheet(block, system = {}) {
           finally{additions.delete(addition);if(node.isConnected)draw();}
         }, !canEdit() || operation?.pending)); list.append(row);
       }
+      bindNameOrder(list,()=>api.i18n.locale);
     }
     async function load() {
       bindTranslation(message, 'textContent', () => t('sheet.libraryLoading')); list.replaceChildren(); list.setAttribute('aria-busy', 'true');
@@ -318,7 +322,7 @@ export async function mountActorSheet(block, system = {}) {
     if (!canEdit() || library && context.role !== 'gm') return;
     const node = modal( () => t(library ? 'sheet.createItem' : 'sheet.createOwnedTitle')), body = el(doc, 'form', 'gws-modal-body'), choice = el(doc, 'label', 'gws-field', () => t('common.type')), select = el(doc, 'select');
     node.dataset.gwsCreate = library ? 'library' : 'owned'; body.noValidate = true;
-    for (const type of types) {const option = el(doc, 'option', '', () => t(`item.type.${type}`)); option.value = type; select.append(option);} choice.append(select); body.append(choice);
+    for (const type of types) {const option = el(doc, 'option', '', () => t(`item.type.${type}`)); option.value = type; bindTranslation(option,'data-gws-sort-name',()=>t(`item.type.${type}`)); select.append(option);} bindNameOrder(select,()=>api.i18n.locale); choice.append(select); body.append(choice);
     const hint = el(doc, 'p', 'gws-field-hint', () => t(library ? 'sheet.createHint' : 'sheet.createOwnedHint')), holder = el(doc, 'div'); body.append(hint, holder);
     let type = types[0], data, itemName = '', creating = false, creation, currentEditor;
     const drafts = new Map();
@@ -373,30 +377,38 @@ export async function mountActorSheet(block, system = {}) {
       list.replaceChildren(); const available = draft.inventory.filter(item => !item.equipped);
       if (!available.length) list.append(el(doc, 'p', 'gws-empty', () => t(draft.inventory.length ? 'sheet.equipEmpty' : 'sheet.noItems')));
       for (const entry of available) {
-        const row = el(doc, 'div', 'gws-picker-row'); row.dataset.entryId = entry.id;
+        const row = el(doc, 'div', 'gws-picker-row'); row.dataset.entryId = entry.id; row.dataset.gwsSortName = entry.name;
         const identity = el(doc, 'div', 'gws-picker-identity'); identity.append(el(doc, 'strong', '', entry.name), el(doc, 'span', '', () => t(`item.type.${entry.type}`)));
         row.append(identity, button( () => t('sheet.equip'), async () => {updateItem('inventory', entry.id, item => {item.equipped = item.data.equipped = true;}); render(); await queue.flush(); draw();}, !canEdit())); list.append(row);
       }
+      bindNameOrder(list,()=>api.i18n.locale);
     }
     const footer = el(doc, 'footer', 'gws-modal-footer'); footer.append(button( () => t('sheet.addFromLibrary'), () => chooseItem(PHYSICAL), !canEdit()), button( () => t('common.done'), () => node.close())); body.append(footer); node.append(body); draw();
   }
   function itemTable(collection, rows, kind = 'generic') {
     const wrap = el(doc, 'div', 'gws-table-wrap'), table = el(doc, 'table', `gws-table gws-table-${kind}`), head = el(doc, 'thead'), heading = el(doc, 'tr');
-    const columns = kind === 'skills' ? ['common.name', 'common.die', 'common.modifier'] : kind === 'equipment' ? ['common.name', 'common.type', 'common.quantity', 'common.equipped'] : ['common.name', 'common.type'];
+    const columns = kind === 'skills' ? ['common.name', 'item.field.attribute', 'common.die', 'common.modifier'] : kind === 'equipment' ? ['common.name', 'common.type', 'common.quantity', 'common.equipped'] : ['common.name', 'common.type'];
     for (const label of [...columns, 'common.actions']) heading.append(el(doc, 'th', '', () => t(label))); head.append(heading); table.append(head);
     const body = el(doc, 'tbody');
     for (const entry of rows) {
       const row = el(doc, 'tr'); row.dataset.entryId = entry.id;
+      row.dataset.gwsSortName = entry.name;
       const identity = el(doc, 'td'), title = button( () => entry.name || t('item.untitled'), () => editItem(collection, entry), false, 'gws-link');
       title.prepend(icon(doc, entry.type === 'weapon' ? 'sword' : PHYSICAL.includes(entry.type) ? 'bag' : entry.type === 'power' ? 'book' : 'star')); identity.append(title); row.append(identity);
       if (kind === 'skills') {
+        const attributeCell = el(doc, 'td'), attribute = el(doc, 'select', 'gws-skill-attribute');
+        bindTranslation(attribute, 'aria-label', () => `${t('item.field.attribute')} · ${entry.name}`); attribute.disabled = !canEdit(); attribute.dataset.gwsSkillAttribute = entry.id;
+        const unset = el(doc, 'option', '', '—'); unset.value = ''; attribute.append(unset);
+        for (const {id, labelKey} of ATTRIBUTES) {const option = el(doc, 'option', '', () => t(labelKey)); option.value = id; attribute.append(option);}
+        attribute.value = entry.data.attribute || '';
+        attribute.onchange = () => updateItem(collection, entry.id, item => {item.data.attribute = attribute.value;}); attributeCell.append(el(doc, 'span', 'gws-skill-field-label', () => t('item.field.attribute')), attribute); row.append(attributeCell);
         const dieCell = el(doc, 'td'), die = el(doc, 'select'); bindTranslation(die, 'aria-label', () => `${t('common.die')} · ${entry.name}`); die.disabled = !canEdit();
         const empty = el(doc, 'option', '', '—'); empty.value = ''; die.append(empty);
         const values = new Set([...DICE.map(String), ...(entry.data.die ? [String(entry.data.die).replace(/^d/, '')] : [])]);
         for (const value of values) {const option = el(doc, 'option', '', `d${value}`); option.value = value; die.append(option);} die.value = String(entry.data.die || '').replace(/^d/, '');
-        die.onchange = () => updateItem(collection, entry.id, item => {item.data.die = die.value ? Number(die.value) : '';}); dieCell.append(die); row.append(dieCell);
+        die.onchange = () => updateItem(collection, entry.id, item => {item.data.die = die.value ? Number(die.value) : '';}); dieCell.append(el(doc, 'span', 'gws-skill-field-label', () => t('common.die')), die); row.append(dieCell);
         const modifierCell = el(doc, 'td'), modifier = el(doc, 'input'); modifier.type = 'number'; modifier.value = entry.data.modifier; modifier.readOnly = !canEdit(); bindTranslation(modifier, 'aria-label', () => `${t('common.modifier')} · ${entry.name}`);
-        modifier.oninput = () => updateItem(collection, entry.id, item => {item.data.modifier = modifier.value === '' ? '' : Number(modifier.value);}); modifierCell.append(modifier); row.append(modifierCell);
+        modifier.oninput = () => updateItem(collection, entry.id, item => {item.data.modifier = modifier.value === '' ? '' : Number(modifier.value);}); modifierCell.append(el(doc, 'span', 'gws-skill-field-label', () => t('common.modifier')), modifier); row.append(modifierCell);
       } else {
         row.append(el(doc, 'td', 'gws-type', () => t(`item.type.${entry.type}`)));
         if (kind === 'equipment') {
@@ -419,10 +431,14 @@ export async function mountActorSheet(block, system = {}) {
         el(doc, 'strong', '', () => t(kind === 'equipment' && tab === 'overview' ? 'sheet.noEquipped' : 'common.empty')), el(doc, 'p', '', () => t(kind === 'equipment' && tab === 'overview' ? 'sheet.equipHint' : 'sheet.dropHint')));
       cell.append(state); cell.colSpan = columns.length + 1; row.append(cell); body.append(row);
     }
+    bindNameOrder(body, () => api.i18n.locale);
     table.append(body); wrap.append(table); return wrap;
   }
   function overview() {
-    const body = el(doc, 'div', 'gws-overview'), upper = el(doc, 'div', 'gws-overview-top'); upper.append(attributes(), resources());body.append(ruleActions.bar(),upper);
+    const body = el(doc, 'div', 'gws-overview'), upper = el(doc, 'div', 'gws-overview-top'), summary = resources();
+    const conditions = summary.querySelector('.gws-conditions'); conditions.classList.add('gws-section');
+    conditions.append(summary.querySelector('.gws-recovery-actions'));
+    upper.append(attributes(), summary); body.append(ruleActions.bar(), upper, conditions);
     const lower = el(doc, 'div', 'gws-overview-bottom'), skills = section( () => t('collection.skills'), 'gws-skills'), equipment = section( () => t('sheet.equippedItems'), 'gws-equipped');
     addCount(skills, draft.skills.length); skills.append(itemTable('skills', draft.skills, 'skills'), button( () => `+ ${t('sheet.addSkill')}`, () => chooseItem(['skill']), !canEdit()));
     addCount(equipment, draft.inventory.filter(item => item.equipped).length);
@@ -439,7 +455,7 @@ export async function mountActorSheet(block, system = {}) {
       const toolbar = el(doc, 'div', 'gws-toolbar'), search = el(doc, 'input'), filter = el(doc, 'select'); search.type = 'search'; search.value = state.query;
       bindTranslation(search, 'placeholder', () => t('sheet.equipmentSearch')); bindTranslation(search, 'aria-label', () => t('sheet.equipmentSearch')); bindTranslation(filter, 'aria-label', () => t('common.type'));
       const all = el(doc, 'option', '', () => t('sheet.allTypes')); all.value = ''; filter.append(all);
-      for (const type of types) {const option = el(doc, 'option', '', () => t(`item.type.${type}`)); option.value = type; filter.append(option);} filter.value = state.type;
+      for (const type of types) {const option = el(doc, 'option', '', () => t(`item.type.${type}`)); option.value = type; bindTranslation(option,'data-gws-sort-name',()=>t(`item.type.${type}`)); filter.append(option);} filter.value = state.type; bindNameOrder(filter,()=>api.i18n.locale);
       function draw() {table.replaceChildren(itemTable(collection, draft[collection].filter(item => searchText(item.name).includes(searchText(state.query)) && (!state.type || item.type === state.type)), 'equipment'));}
       search.oninput = () => {state.query = search.value; draw();}; filter.onchange = () => {state.type = filter.value; draw();}; toolbar.append(search, filter);
       if(system.settings?.current?.currency?.enabled!==false)node.append(field('resources.currency',()=>currencyLabel(system.settings?.current,t)));
@@ -457,7 +473,10 @@ export async function mountActorSheet(block, system = {}) {
       choice('profile.role', () => t('rules.profileRole'),[['player', () => t('rules.rolePlayer')],['ally', () => t('rules.roleAlly')],['enemy', () => t('rules.roleEnemy')]]),
       choice('profile.wildDie', () => t('rules.wildDie'),DICE.map(die=>[String(die),`d${die}`])),field('profile.woundCapacity', () => t('rules.woundCapacity'),{number:true,min:0}),
       field('stats.size', () => t('rules.size'),{number:true}),field('stats.basePace', () => t('rules.basePace'),{number:true,min:1}),choice('stats.runningDie', () => t('rules.runningDie'),DICE.map(die=>[String(die),`d${die}`])),toggle('profile.animalSmarts', () => t('rules.animalSmarts')));
-    const skills=[['', () => t('item.emptyValue')],...draft.skills.map(row=>[row.id,row.name])];grid.append(choice('links.combatSkillId', () => t('rules.combatSkill'),skills));
+    const skills=[['', () => t('item.emptyValue')],...alphabeticalRows(draft.skills,api.i18n.locale).map(row=>[row.id,row.name])];
+    const combatSkill=choice('links.combatSkillId', () => t('rules.combatSkill'),skills),combatSelect=combatSkill.querySelector('select');
+    for(const option of combatSelect.options)if(option.value)option.dataset.gwsSortName=option.textContent;
+    bindNameOrder(combatSelect,()=>api.i18n.locale);grid.append(combatSkill);
     const derived=section( () => t('rules.statOverrides'));derived.append(el(doc,'p','gws-field-hint', () => t('rules.overrideHint')));
     const values=el(doc,'div','gws-rule-grid');for(const key of ['parry','toughness','armor','pace','runningDie','loadLimit'])values.append(field(`overrides.${key}`, () => t(key==='runningDie'?'rules.runningDie':key==='loadLimit'?'rules.loadLimit':`stat.${key}`),{number:true}));
     derived.append(values,button( () => t('rules.clearOverrides'),()=>{for(const key of Object.keys(draft.overrides))changed(`overrides.${key}`,null);node.close();},!canEdit()));body.append(derived);
@@ -504,7 +523,7 @@ export async function mountActorSheet(block, system = {}) {
         title.oninput=()=>{pool.name=title.value;queue.mark();};row.append(title);
         for(const key of ['current','max']){const control=el(doc,'input');control.type='number';control.min='0';control.value=pool[key];control.readOnly=!canEdit();bindTranslation(control, 'aria-label', () => t(`common.${key==='max'?'maximum':key}`));control.oninput=()=>{pool[key]=control.value===''?'':Number(control.value);queue.mark();};row.append(control);}
         const skill=el(doc,'select');bindTranslation(skill, 'aria-label', () => t('rules.arcaneSkill'));skill.disabled=!canEdit();
-        for(const candidate of [{id:'',name:()=>t('item.emptyValue')},...draft.skills]){const option=el(doc,'option','',candidate.name);option.value=candidate.id;skill.append(option);}skill.value=pool.skillId;skill.onchange=()=>{pool.skillId=skill.value;queue.mark();};row.append(skill);
+        for(const candidate of [{id:'',name:()=>t('item.emptyValue')},...draft.skills]){const option=el(doc,'option','',candidate.name);option.value=candidate.id;if(candidate.id)option.dataset.gwsSortName=candidate.name;skill.append(option);}skill.value=pool.skillId;bindNameOrder(skill,()=>api.i18n.locale);skill.onchange=()=>{pool.skillId=skill.value;queue.mark();};row.append(skill);
         row.append(iconButton( () => t('common.remove'),'trash',()=>{
           const confirm=modal( () => t('common.remove')),body=el(doc,'div','gws-modal-body');body.append(el(doc,'p','', () => t('rules.confirmPoolRemove')),
             button( () => t('common.remove'),async()=>{changed('arcanePools',draft.arcanePools.filter(value=>value.id!==pool.id));await queue.flush();await confirm.close();},!canEdit()),button( () => t('common.cancel'),()=>confirm.close()));confirm.append(body);
